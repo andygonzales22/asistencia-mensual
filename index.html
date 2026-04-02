@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maderas Prosperidad - Planilla Inteligente v4</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        .glass-card { background: white; border-radius: 0.75rem; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1); }
+        .sidebar-item { transition: all 0.2s; cursor: pointer; color: #64748b; font-size: 0.9rem; }
+        .sidebar-active { border-left: 4px solid #2563eb; background-color: #f8fafc; color: #1e293b !important; font-weight: 700; }
+        .input-field { border: 1px solid #cbd5e1; padding: 0.4rem 0.7rem; border-radius: 0.4rem; width: 100%; outline: none; font-size: 0.85rem; }
+        .input-field:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
+        .table-header { background-color: #f8fafc; text-transform: uppercase; font-size: 10px; font-weight: 800; color: #64748b; letter-spacing: 0.05em; }
+        .domingo-row { background-color: #fff1f2; }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white border-r flex flex-col shadow-sm z-20">
+        <div class="p-6 border-b">
+            <h1 class="text-lg font-black text-blue-700 leading-tight">MADERAS<br><span class="text-slate-800">PROSPERIDAD</span></h1>
+        </div>
+        <nav class="flex-1 py-4 overflow-y-auto">
+            <div onclick="showSection('asistencia')" id="btn-asistencia" class="sidebar-item sidebar-active p-4 flex items-center gap-3">
+                <i class="fas fa-clock"></i> Asistencia Diaria
+            </div>
+            <div onclick="showSection('personal')" id="btn-personal" class="sidebar-item p-4 flex items-center gap-3">
+                <i class="fas fa-users"></i> Personal / Sedes
+            </div>
+            <div onclick="showSection('config')" id="btn-config" class="sidebar-item p-4 flex items-center gap-3">
+                <i class="fas fa-cogs"></i> Ajustes Horarios
+            </div>
+        </nav>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 overflow-y-auto p-6">
+        
+        <!-- Sección Asistencia -->
+        <section id="section-asistencia" class="space-y-6">
+            <div class="flex justify-between items-end">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">Control de Asistencia <span id="mes-actual-label" class="text-blue-600"></span></h2>
+                    <p class="text-xs text-slate-500 italic">Los horarios se cargan por defecto según la configuración de sede.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2">
+                        <i class="fas fa-file-excel"></i> Exportar Planilla del Mes
+                    </button>
+                </div>
+            </div>
+
+            <div id="grupos-asistencia" class="space-y-8"></div>
+        </section>
+
+        <!-- Sección Personal -->
+        <section id="section-personal" class="hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold text-slate-800">Directorio de Personal</h2>
+                <button onclick="openModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700">
+                    <i class="fas fa-plus"></i> Nuevo Trabajador
+                </button>
+            </div>
+            <div id="lista-personal" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </section>
+
+        <!-- Sección Configuración -->
+        <section id="section-config" class="hidden space-y-6">
+            <h2 class="text-xl font-bold text-slate-800">Configuración de Horarios Base</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="config-grid">
+                <!-- Se genera dinámicamente -->
+            </div>
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <p class="text-xs text-blue-700 font-medium">Nota: Estos horarios se aplican automáticamente al abrir el registro de asistencia mensual. Los cambios aquí afectarán a los nuevos registros abiertos.</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal Registro Asistencia Diaria -->
+    <div id="modal-asistencia" class="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 hidden p-4">
+        <div class="bg-white rounded-xl w-full max-w-5xl overflow-hidden shadow-2xl">
+            <div class="p-4 border-b flex justify-between items-center bg-slate-50">
+                <div>
+                    <h3 class="font-bold text-slate-700 text-lg" id="at-nombre-tit">Registro Mensual</h3>
+                    <p id="at-sub-info" class="text-[10px] text-slate-500 font-bold uppercase"></p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                        <p class="text-[10px] font-bold text-slate-400">TOTAL H.E. MES</p>
+                        <p id="totales-modal" class="text-sm font-black text-blue-600"></p>
+                    </div>
+                    <button onclick="closeAsistenciaModal()" class="text-slate-400 hover:text-red-500 text-xl ml-4"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div class="p-4 overflow-x-auto max-h-[70vh] overflow-y-auto">
+                <table class="w-full text-xs">
+                    <thead class="sticky top-0 bg-white z-10">
+                        <tr class="text-left text-slate-400 uppercase font-black border-b">
+                            <th class="pb-2 pl-2">Fecha / Día</th>
+                            <th class="pb-2">Entrada</th>
+                            <th class="pb-2">Salida</th>
+                            <th class="pb-2 text-center">Refr. (h)</th>
+                            <th class="pb-2 text-center">H.E 25%</th>
+                            <th class="pb-2 text-center">H.E 35%</th>
+                            <th class="pb-2 text-center">H.E 100%</th>
+                            <th class="pb-2 text-center">Feriado?</th>
+                        </tr>
+                    </thead>
+                    <tbody id="asistencia-mes-body"></tbody>
+                </table>
+            </div>
+            <div class="p-4 bg-slate-50 border-t flex justify-between items-center">
+                <p class="text-[10px] text-slate-400 italic">* Los domingos y feriados calculan automáticamente 100% sobre el total laborado.</p>
+                <div class="flex gap-3">
+                    <button onclick="closeAsistenciaModal()" class="px-6 py-2 text-xs font-bold text-slate-600">Cancelar</button>
+                    <button onclick="guardarAsistenciaMes()" class="px-6 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-lg shadow-blue-200">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Personal -->
+    <div id="modal-personal" class="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 hidden p-4">
+        <div class="bg-white rounded-xl w-full max-w-md shadow-2xl">
+            <div class="p-4 border-b font-bold text-slate-700">Ficha del Trabajador</div>
+            <div class="p-6 space-y-3">
+                <input type="text" id="f-nombre" placeholder="Nombre Completo" class="input-field">
+                <input type="text" id="f-dni" placeholder="DNI" class="input-field">
+                <input type="text" id="f-telf" placeholder="Teléfono" class="input-field">
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="f-sede" class="input-field">
+                        <option value="Moche">Sede Moche</option>
+                        <option value="Piura">Sede Piura</option>
+                    </select>
+                    <select id="f-tipo" class="input-field">
+                        <option value="Administrativo">Administrativo</option>
+                        <option value="Operativo">Operativo</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="number" id="f-dias-lab" placeholder="Días Lab." class="input-field">
+                    <input type="number" id="f-faltas" placeholder="Faltas" class="input-field">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="number" id="f-permisos" placeholder="Permisos" class="input-field">
+                    <input type="number" id="f-descansos" placeholder="Desc. Médicos" class="input-field">
+                </div>
+            </div>
+            <div class="p-4 border-t flex justify-end gap-2">
+                <button onclick="closeModal()" class="px-4 py-2 text-xs font-bold">Cerrar</button>
+                <button onclick="guardarPersonal()" class="px-4 py-2 bg-blue-600 text-white rounded text-xs font-bold">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración de Horarios Base por Sede/Tipo
+        let HORARIOS = {
+            Moche: {
+                Administrativo: { entrada: "08:00", salida: "17:00", refri: 1 },
+                Operativo: { entrada: "07:30", salida: "17:00", refri: 1 }
+            },
+            Piura: {
+                Administrativo: { entrada: "08:00", salida: "17:00", refri: 1 },
+                Operativo: { entrada: "07:30", salida: "16:30", refri: 0.5 }
+            }
+        };
+
+        const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        const hoy = new Date();
+        const mesActual = hoy.getMonth();
+        const anioActual = hoy.getFullYear();
+
+        let personal = [
+            { id: 1, nombre: "Carlos Perez", dni: "12345678", telf: "987", sede: "Moche", tipo: "Administrativo", diasLab: 30, faltas: 0, permisos: 0, descansos: 0, registroAsis: [] },
+            { id: 2, nombre: "Juan Operario", dni: "87654321", telf: "999", sede: "Moche", tipo: "Operativo", diasLab: 30, faltas: 0, permisos: 0, descansos: 0, registroAsis: [] },
+            { id: 3, nombre: "Ana Admin Piura", dni: "11223344", telf: "555", sede: "Piura", tipo: "Administrativo", diasLab: 30, faltas: 0, permisos: 0, descansos: 0, registroAsis: [] },
+            { id: 4, nombre: "Luis Operario Piura", dni: "55667788", telf: "444", sede: "Piura", tipo: "Operativo", diasLab: 30, faltas: 0, permisos: 0, descansos: 0, registroAsis: [] }
+        ];
+
+        let currentWorkerIdx = -1;
+
+        function showSection(section) {
+            document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+            const target = document.getElementById('section-' + section);
+            if(target) target.classList.remove('hidden');
+            
+            document.querySelectorAll('.sidebar-item').forEach(b => b.classList.remove('sidebar-active'));
+            const btn = document.getElementById('btn-' + section);
+            if(btn) btn.classList.add('sidebar-active');
+            
+            if(section === 'asistencia') renderAsistencia();
+            if(section === 'personal') renderPersonal();
+            if(section === 'config') renderConfig();
+        }
+
+        function renderAsistencia() {
+            const label = document.getElementById('mes-actual-label');
+            if(label) label.innerText = `- ${MESES[mesActual]} ${anioActual}`;
+            
+            const container = document.getElementById('grupos-asistencia');
+            if(!container) return;
+            container.innerHTML = '';
+            
+            const grupos = [
+                { s: 'Moche', t: 'Administrativo' }, { s: 'Moche', t: 'Operativo' },
+                { s: 'Piura', t: 'Administrativo' }, { s: 'Piura', t: 'Operativo' }
+            ];
+
+            grupos.forEach(g => {
+                const lista = personal.filter(p => p.sede === g.s && p.tipo === g.t);
+                if(lista.length === 0) return;
+
+                const div = document.createElement('div');
+                div.className = "glass-card overflow-hidden";
+                div.innerHTML = `
+                    <div class="bg-slate-800 text-white px-4 py-2 text-[10px] font-black flex justify-between items-center tracking-widest">
+                        <span>${g.s.toUpperCase()} | ${g.t.toUpperCase()}S</span>
+                        <span class="bg-slate-700 px-2 py-0.5 rounded">${lista.length} PERSONAS</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-[11px] text-left">
+                            <thead class="table-header border-b">
+                                <tr>
+                                    <th class="p-3">Nombre</th>
+                                    <th class="p-3 text-center">Días Lab.</th>
+                                    <th class="p-3 text-center">Faltas</th>
+                                    <th class="p-3 text-center">H.E 25%</th>
+                                    <th class="p-3 text-center">H.E 35%</th>
+                                    <th class="p-3 text-center">H.E 100%</th>
+                                    <th class="p-3 text-right">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                ${lista.map(p => {
+                                    const hes = calcularTotalesMes(p);
+                                    return `
+                                    <tr class="hover:bg-slate-50 transition-colors">
+                                        <td class="p-3 font-bold text-slate-700">${p.nombre}</td>
+                                        <td class="p-3 text-center font-bold text-slate-500">${p.diasLab}</td>
+                                        <td class="p-3 text-center font-bold ${p.faltas > 0 ? 'text-red-500' : 'text-slate-400'}">${p.faltas}</td>
+                                        <td class="p-3 text-center font-black text-blue-600">${hes.h25}h</td>
+                                        <td class="p-3 text-center font-black text-blue-800">${hes.h35}h</td>
+                                        <td class="p-3 text-center font-black text-red-600">${hes.h100}h</td>
+                                        <td class="p-3 text-right">
+                                            <button onclick="openAsistenciaModal(${personal.indexOf(p)})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm flex items-center gap-1 float-right">
+                                                <i class="fas fa-edit text-[10px]"></i> ASISTENCIA
+                                            </button>
+                                        </td>
+                                    </tr>`;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function getDiasDelMes() {
+            return new Date(anioActual, mesActual + 1, 0).getDate();
+        }
+
+        function openAsistenciaModal(idx) {
+            currentWorkerIdx = idx;
+            const p = personal[idx];
+            const config = HORARIOS[p.sede][p.tipo];
+            
+            const titleEl = document.getElementById('at-nombre-tit');
+            const infoEl = document.getElementById('at-sub-info');
+            const bodyEl = document.getElementById('asistencia-mes-body');
+
+            if(titleEl) titleEl.innerText = p.nombre;
+            if(infoEl) infoEl.innerText = `${p.sede} | ${p.tipo} | Horario Base: ${config.entrada} - ${config.salida}`;
+            
+            if(!bodyEl) return;
+            bodyEl.innerHTML = '';
+
+            const numDias = getDiasDelMes();
+            const nombresDias = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
+
+            for(let d=1; d<=numDias; d++) {
+                const fechaDate = new Date(anioActual, mesActual, d);
+                const diaSemana = nombresDias[fechaDate.getDay()];
+                const isDom = fechaDate.getDay() === 0;
+
+                // Si no hay registro previo, precargar horario base excepto domingos
+                const r = p.registroAsis[d-1] || { 
+                    in: isDom ? "" : config.entrada, 
+                    out: isDom ? "" : config.salida, 
+                    refri: config.refri,
+                    h25: 0, h35: 0, h100: 0, feriado: isDom 
+                };
+
+                const tr = document.createElement('tr');
+                tr.className = `border-b border-slate-50 hover:bg-slate-50 transition-colors ${isDom ? 'domingo-row' : ''}`;
+                tr.innerHTML = `
+                    <td class="py-3 pl-2 font-bold ${isDom ? 'text-red-500' : 'text-slate-600'}">
+                        ${d < 10 ? '0'+d : d}/${(mesActual+1) < 10 ? '0'+(mesActual+1) : (mesActual+1)} <span class="text-[9px] uppercase opacity-60 ml-1">${diaSemana}</span>
+                    </td>
+                    <td><input type="time" class="input-field w-24 time-in" value="${r.in}" onchange="calcularHEFila(this)"></td>
+                    <td><input type="time" class="input-field w-24 time-out" value="${r.out}" onchange="calcularHEFila(this)"></td>
+                    <td><input type="number" step="0.5" class="input-field w-16 text-center input-refri" value="${r.refri}" onchange="calcularHEFila(this)"></td>
+                    <td class="h25 text-center font-bold text-blue-600">${r.h25}</td>
+                    <td class="h35 text-center font-bold text-blue-800">${r.h35}</td>
+                    <td class="h100 text-center font-bold text-red-600">${r.h100}</td>
+                    <td class="text-center">
+                        <input type="checkbox" class="feriado-chk w-4 h-4 accent-red-500" ${r.feriado ? 'checked' : ''} onchange="calcularHEFila(this)">
+                    </td>
+                `;
+                bodyEl.appendChild(tr);
+                if(r.in && r.out) calcularHEFila(tr.querySelector('.time-in'));
+            }
+            
+            const modal = document.getElementById('modal-asistencia');
+            if(modal) modal.classList.remove('hidden');
+            actualizarSumaModal();
+        }
+
+        function calcularHEFila(el) {
+            const row = el.closest('tr');
+            const tIn = row.querySelector('.time-in').value;
+            const tOut = row.querySelector('.time-out').value;
+            const refri = parseFloat(row.querySelector('.input-refri').value) || 0;
+            const isFeriado = row.querySelector('.feriado-chk').checked;
+            
+            const p = personal[currentWorkerIdx];
+            const config = HORARIOS[p.sede][p.tipo];
+
+            if(!tIn || !tOut) {
+                row.querySelector('.h25').innerText = "0.0";
+                row.querySelector('.h35').innerText = "0.0";
+                row.querySelector('.h100').innerText = "0.0";
+                actualizarSumaModal();
+                return;
+            }
+
+            const [hIn, mIn] = tIn.split(':').map(Number);
+            const [hOut, mOut] = tOut.split(':').map(Number);
+            const [hBaseIn, mBaseIn] = config.entrada.split(':').map(Number);
+            const [hBaseOut, mBaseOut] = config.salida.split(':').map(Number);
+
+            const minsIn = hIn * 60 + mIn;
+            const minsOut = hOut * 60 + mOut;
+            const minsBaseIn = hBaseIn * 60 + mBaseIn;
+            const minsBaseOut = hBaseOut * 60 + mBaseOut;
+
+            let totalMinsLab = minsOut - minsIn;
+            if(totalMinsLab < 0) totalMinsLab += 1440;
+
+            const efectivoMins = totalMinsLab - (refri * 60);
+            
+            let h25 = 0, h35 = 0, h100 = 0;
+
+            if(isFeriado) {
+                h100 = (efectivoMins / 60).toFixed(1);
+            } else {
+                const jornadaBaseMins = minsBaseOut - minsBaseIn - (config.refri * 60);
+                const excesoMins = efectivoMins - jornadaBaseMins;
+
+                if(excesoMins > 0) {
+                    const excesoHoras = excesoMins / 60;
+                    h25 = Math.min(2, excesoHoras).toFixed(1);
+                    h35 = Math.max(0, excesoHoras - 2).toFixed(1);
+                }
+            }
+
+            row.querySelector('.h25').innerText = h25;
+            row.querySelector('.h35').innerText = h35;
+            row.querySelector('.h100').innerText = h100;
+            
+            actualizarSumaModal();
+        }
+
+        function actualizarSumaModal() {
+            let s25 = 0, s35 = 0, s100 = 0;
+            document.querySelectorAll('#asistencia-mes-body tr').forEach(row => {
+                s25 += parseFloat(row.querySelector('.h25').innerText) || 0;
+                s35 += parseFloat(row.querySelector('.h35').innerText) || 0;
+                s100 += parseFloat(row.querySelector('.h100').innerText) || 0;
+            });
+            const totalesEl = document.getElementById('totales-modal');
+            if(totalesEl) totalesEl.innerText = `25%: ${s25.toFixed(1)}h | 35%: ${s35.toFixed(1)}h | 100%: ${s100.toFixed(1)}h`;
+        }
+
+        function guardarAsistenciaMes() {
+            const rows = document.querySelectorAll('#asistencia-mes-body tr');
+            const nuevoRegistro = [];
+            rows.forEach((row) => {
+                nuevoRegistro.push({
+                    in: row.querySelector('.time-in').value,
+                    out: row.querySelector('.time-out').value,
+                    refri: parseFloat(row.querySelector('.input-refri').value) || 0,
+                    h25: parseFloat(row.querySelector('.h25').innerText) || 0,
+                    h35: parseFloat(row.querySelector('.h35').innerText) || 0,
+                    h100: parseFloat(row.querySelector('.h100').innerText) || 0,
+                    feriado: row.querySelector('.feriado-chk').checked
+                });
+            });
+            personal[currentWorkerIdx].registroAsis = nuevoRegistro;
+            closeAsistenciaModal();
+            renderAsistencia();
+        }
+
+        function calcularTotalesMes(p) {
+            let t = { h25: 0, h35: 0, h100: 0 };
+            p.registroAsis.forEach(r => {
+                t.h25 += r.h25;
+                t.h35 += r.h35;
+                t.h100 += r.h100;
+            });
+            return { h25: t.h25.toFixed(1), h35: t.h35.toFixed(1), h100: t.h100.toFixed(1) };
+        }
+
+        function renderConfig() {
+            const grid = document.getElementById('config-grid');
+            if(!grid) return;
+            grid.innerHTML = '';
+            
+            for(let sede in HORARIOS) {
+                for(let tipo in HORARIOS[sede]) {
+                    const c = HORARIOS[sede][tipo];
+                    const card = document.createElement('div');
+                    card.className = "glass-card p-4";
+                    card.innerHTML = `
+                        <h4 class="font-black text-slate-700 text-xs mb-3 uppercase tracking-tighter">${sede} - ${tipo}</h4>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-400">ENTRADA</label>
+                                <input type="time" class="input-field" value="${c.entrada}" onchange="updateHorarioBase('${sede}', '${tipo}', 'entrada', this.value)">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-400">SALIDA</label>
+                                <input type="time" class="input-field" value="${c.salida}" onchange="updateHorarioBase('${sede}', '${tipo}', 'salida', this.value)">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-400">REFRI (H)</label>
+                                <input type="number" step="0.5" class="input-field" value="${c.refri}" onchange="updateHorarioBase('${sede}', '${tipo}', 'refri', this.value)">
+                            </div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                }
+            }
+        }
+
+        function updateHorarioBase(sede, tipo, campo, valor) {
+            HORARIOS[sede][tipo][campo] = campo === 'refri' ? parseFloat(valor) : valor;
+        }
+
+        function renderPersonal() {
+            const container = document.getElementById('lista-personal');
+            if(!container) return;
+            container.innerHTML = personal.map((p, i) => `
+                <div class="glass-card p-4 relative group hover:border-blue-200 transition-all">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-bold text-slate-800">${p.nombre}</h4>
+                            <p class="text-[10px] text-slate-400">DNI: ${p.dni} | SEDE: ${p.sede}</p>
+                        </div>
+                        <span class="text-[9px] px-2 py-0.5 rounded bg-blue-50 font-black uppercase text-blue-600 border border-blue-100">${p.tipo}</span>
+                    </div>
+                    <div class="mt-4 pt-3 border-t flex gap-2">
+                        <button onclick="editPersonal(${i})" class="flex-1 bg-slate-50 text-slate-600 py-1.5 rounded text-[10px] font-bold hover:bg-blue-600 hover:text-white transition-all">EDITAR FICHA</button>
+                        <button onclick="deletePersonal(${i})" class="w-8 bg-red-50 text-red-500 rounded flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openModal() { editIdx = -1; document.getElementById('modal-personal').classList.remove('hidden'); resetForm(); }
+        function closeModal() { document.getElementById('modal-personal').classList.add('hidden'); }
+        function closeAsistenciaModal() { document.getElementById('modal-asistencia').classList.add('hidden'); }
+
+        function resetForm() {
+            document.getElementById('f-nombre').value = '';
+            document.getElementById('f-dni').value = '';
+            document.getElementById('f-telf').value = '';
+            document.getElementById('f-dias-lab').value = 30;
+            document.getElementById('f-faltas').value = 0;
+            document.getElementById('f-permisos').value = 0;
+            document.getElementById('f-descansos').value = 0;
+        }
+
+        function guardarPersonal() {
+            const data = {
+                nombre: document.getElementById('f-nombre').value,
+                dni: document.getElementById('f-dni').value,
+                telf: document.getElementById('f-telf').value,
+                sede: document.getElementById('f-sede').value,
+                tipo: document.getElementById('f-tipo').value,
+                diasLab: document.getElementById('f-dias-lab').value || 30,
+                faltas: document.getElementById('f-faltas').value || 0,
+                permisos: document.getElementById('f-permisos').value || 0,
+                descansos: document.getElementById('f-descansos').value || 0,
+                registroAsis: editIdx === -1 ? [] : personal[editIdx].registroAsis
+            };
+            if(!data.nombre || !data.dni) return;
+
+            if(editIdx === -1) personal.push(data);
+            else personal[editIdx] = data;
+            closeModal();
+            renderPersonal();
+            renderAsistencia();
+        }
+
+        let editIdx = -1;
+        function editPersonal(idx) {
+            editIdx = idx;
+            const p = personal[idx];
+            document.getElementById('f-nombre').value = p.nombre;
+            document.getElementById('f-dni').value = p.dni;
+            document.getElementById('f-telf').value = p.telf;
+            document.getElementById('f-sede').value = p.sede;
+            document.getElementById('f-tipo').value = p.tipo;
+            document.getElementById('f-dias-lab').value = p.diasLab;
+            document.getElementById('f-faltas').value = p.faltas;
+            document.getElementById('f-permisos').value = p.permisos;
+            document.getElementById('f-descansos').value = p.descansos;
+            document.getElementById('modal-personal').classList.remove('hidden');
+        }
+
+        function deletePersonal(idx) {
+            if(confirm('¿Eliminar trabajador?')) {
+                personal.splice(idx, 1);
+                renderPersonal();
+                renderAsistencia();
+            }
+        }
+
+        function exportToExcel() {
+            const wb = XLSX.utils.book_new();
+            const mesStr = MESES[mesActual].toUpperCase();
+            
+            const grupos = [
+                { s: 'Moche', t: 'Administrativo' }, { s: 'Moche', t: 'Operativo' },
+                { s: 'Piura', t: 'Administrativo' }, { s: 'Piura', t: 'Operativo' }
+            ];
+
+            grupos.forEach(g => {
+                const lista = personal.filter(p => p.sede === g.s && p.tipo === g.t);
+                if(lista.length === 0) return;
+
+                const data = lista.map(p => {
+                    const h = calcularTotalesMes(p);
+                    return {
+                        "COLABORADOR": p.nombre,
+                        "DNI": p.dni,
+                        "MES": mesStr,
+                        "DÍAS LAB.": p.diasLab,
+                        "FALTAS": p.faltas,
+                        "PERMISOS": p.permisos,
+                        "DESC. MÉDICOS": p.descansos,
+                        "H.E. 25%": h.h25,
+                        "H.E. 35%": h.h35,
+                        "H.E. 100%": h.h100,
+                        "TOTAL H.E.": (parseFloat(h.h25) + parseFloat(h.h35) + parseFloat(h.h100)).toFixed(1)
+                    };
+                });
+
+                const ws = XLSX.utils.json_to_sheet(data);
+                ws['!cols'] = [{wch: 35}, {wch: 12}, {wch: 15}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 15}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 12}];
+                XLSX.utils.book_append_sheet(wb, ws, `${g.s.substring(0,1)}_${g.t.substring(0,3)}`);
+            });
+
+            XLSX.writeFile(wb, `Planilla_${mesStr}_${anioActual}.xlsx`);
+        }
+
+        window.onload = () => showSection('asistencia');
+    </script>
+</body>
+</html>
