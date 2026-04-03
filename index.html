@@ -3,576 +3,550 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maderas Prosperidad - Planilla Inteligente v4</title>
+    <title>Maderas Prosperidad - Planilla v7.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
-        .glass-card { background: white; border-radius: 0.75rem; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1); }
-        .sidebar-item { transition: all 0.2s; cursor: pointer; color: #64748b; font-size: 0.9rem; }
-        .sidebar-active { border-left: 4px solid #2563eb; background-color: #f8fafc; color: #1e293b !important; font-weight: 700; }
-        .input-field { border: 1px solid #cbd5e1; padding: 0.4rem 0.7rem; border-radius: 0.4rem; width: 100%; outline: none; font-size: 0.85rem; }
-        .input-field:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
-        .table-header { background-color: #f8fafc; text-transform: uppercase; font-size: 10px; font-weight: 800; color: #64748b; letter-spacing: 0.05em; }
-        .domingo-row { background-color: #fff1f2; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .glass-card { background: white; border-radius: 1rem; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); transition: transform 0.2s; }
+        .glass-card:hover { transform: translateY(-2px); }
+        .sidebar-item { transition: all 0.2s; cursor: pointer; color: #64748b; font-size: 0.9rem; border-left: 4px solid transparent; }
+        .sidebar-active { border-left: 4px solid #2563eb; background-color: #f1f5f9; color: #1e293b !important; font-weight: 700; }
+        .input-field { border: 1px solid #cbd5e1; padding: 0.5rem 0.75rem; border-radius: 0.5rem; width: 100%; outline: none; font-size: 0.85rem; }
+        .stat-box { border-radius: 0.75rem; padding: 0.5rem; text-align: center; flex: 1; }
+        .save-indicator { position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; background: #059669; color: white; border-radius: 50px; font-size: 12px; display: none; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body class="h-screen flex overflow-hidden">
 
+    <div id="save-msg" class="save-indicator"><i class="fas fa-check-circle mr-2"></i> Cambios guardados</div>
+
     <!-- Sidebar -->
     <aside class="w-64 bg-white border-r flex flex-col shadow-sm z-20">
         <div class="p-6 border-b">
-            <h1 class="text-lg font-black text-blue-700 leading-tight">MADERAS<br><span class="text-slate-800">PROSPERIDAD</span></h1>
+            <h1 class="text-lg font-black text-blue-700 leading-tight tracking-tighter">MADERAS<br><span class="text-slate-800">PROSPERIDAD</span></h1>
         </div>
         <nav class="flex-1 py-4 overflow-y-auto">
-            <div onclick="showSection('asistencia')" id="btn-asistencia" class="sidebar-item sidebar-active p-4 flex items-center gap-3">
-                <i class="fas fa-clock"></i> Asistencia Diaria
+            <div onclick="showSection('personal')" id="btn-personal" class="sidebar-item sidebar-active p-4 flex items-center gap-3">
+                <i class="fas fa-users w-5"></i> Trabajadores
             </div>
-            <div onclick="showSection('personal')" id="btn-personal" class="sidebar-item p-4 flex items-center gap-3">
-                <i class="fas fa-users"></i> Personal / Sedes
+            <div onclick="showSection('asistencia')" id="btn-asistencia" class="sidebar-item p-4 flex items-center gap-3">
+                <i class="fas fa-calendar-check w-5"></i> Asistencia / HE
             </div>
             <div onclick="showSection('config')" id="btn-config" class="sidebar-item p-4 flex items-center gap-3">
-                <i class="fas fa-cogs"></i> Ajustes Horarios
+                <i class="fas fa-sliders-h w-5"></i> Ajustes Sede
             </div>
         </nav>
+        <div class="p-4 border-t">
+            <button onclick="window.limpiarTodo()" class="w-full bg-slate-50 text-slate-400 py-2 rounded-lg text-[10px] font-bold hover:bg-red-50 hover:text-red-500 transition-all uppercase">
+                Resetear Aplicación
+            </button>
+        </div>
     </aside>
 
-    <!-- Main -->
-    <main class="flex-1 overflow-y-auto p-6">
-        
-        <!-- Sección Asistencia -->
-        <section id="section-asistencia" class="space-y-6">
+    <main class="flex-1 overflow-y-auto p-8 bg-slate-50">
+        <!-- Sección Personal -->
+        <section id="section-personal" class="space-y-6 max-w-6xl mx-auto">
             <div class="flex justify-between items-end">
                 <div>
-                    <h2 class="text-xl font-bold text-slate-800">Control de Asistencia <span id="mes-actual-label" class="text-blue-600"></span></h2>
-                    <p class="text-xs text-slate-500 italic">Los horarios se cargan por defecto según la configuración de sede.</p>
+                    <h2 class="text-2xl font-bold text-slate-800">Panel de Personal</h2>
+                    <p class="text-slate-400 text-sm">Gestiona fichas y conteo de días mensuales.</p>
                 </div>
-                <div class="flex gap-2">
-                    <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2">
-                        <i class="fas fa-file-excel"></i> Exportar Planilla del Mes
-                    </button>
-                </div>
+                <button onclick="openModal()" class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-2">
+                    <i class="fas fa-plus"></i> AGREGAR TRABAJADOR
+                </button>
             </div>
+            <div id="lista-personal" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+        </section>
 
+        <!-- Sección Asistencia -->
+        <section id="section-asistencia" class="hidden space-y-6 max-w-6xl mx-auto">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">Registro de Marcaciones</h2>
+                    <p class="text-slate-400 text-sm">Cálculo automático de Horas Extra.</p>
+                </div>
+                <button onclick="exportToExcel()" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-emerald-100 flex items-center gap-2">
+                    <i class="fas fa-file-excel"></i> EXPORTAR EXCEL CONSOLIDADO
+                </button>
+            </div>
             <div id="grupos-asistencia" class="space-y-8"></div>
         </section>
 
-        <!-- Sección Personal -->
-        <section id="section-personal" class="hidden space-y-6">
-            <div class="flex justify-between items-center">
-                <h2 class="text-xl font-bold text-slate-800">Directorio de Personal</h2>
-                <button onclick="openModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700">
-                    <i class="fas fa-plus"></i> Nuevo Trabajador
-                </button>
-            </div>
-            <div id="lista-personal" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-        </section>
-
         <!-- Sección Configuración -->
-        <section id="section-config" class="hidden space-y-6">
-            <h2 class="text-xl font-bold text-slate-800">Configuración de Horarios Base</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="config-grid">
-                <!-- Se genera dinámicamente -->
-            </div>
-            <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                <p class="text-xs text-blue-700 font-medium">Nota: Estos horarios se aplican automáticamente al abrir el registro de asistencia mensual. Los cambios aquí afectarán a los nuevos registros abiertos.</p>
-            </div>
+        <section id="section-config" class="hidden space-y-6 max-w-4xl mx-auto">
+            <h2 class="text-2xl font-bold text-slate-800 text-center">Horarios Base de Sede</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="config-grid"></div>
         </section>
     </main>
 
-    <!-- Modal Registro Asistencia Diaria -->
-    <div id="modal-asistencia" class="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 hidden p-4">
-        <div class="bg-white rounded-xl w-full max-w-5xl overflow-hidden shadow-2xl">
-            <div class="p-4 border-b flex justify-between items-center bg-slate-50">
+    <!-- Modales permanecen iguales pero vinculados a las nuevas funciones -->
+    <div id="modal-personal" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 hidden p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div class="p-5 border-b font-bold text-slate-700 flex justify-between items-center bg-slate-50/50">
+                <span class="flex items-center gap-2"><i class="fas fa-id-card text-blue-500"></i> Ficha del Colaborador</span>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
                 <div>
-                    <h3 class="font-bold text-slate-700 text-lg" id="at-nombre-tit">Registro Mensual</h3>
-                    <p id="at-sub-info" class="text-[10px] text-slate-500 font-bold uppercase"></p>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Nombre Completo</label>
+                    <input type="text" id="f-nombre" class="input-field" placeholder="Nombre y Apellidos">
                 </div>
-                <div class="flex items-center gap-4">
-                    <div class="text-right">
-                        <p class="text-[10px] font-bold text-slate-400">TOTAL H.E. MES</p>
-                        <p id="totales-modal" class="text-sm font-black text-blue-600"></p>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">DNI</label>
+                        <input type="text" id="f-dni" class="input-field" placeholder="8 dígitos">
                     </div>
-                    <button onclick="closeAsistenciaModal()" class="text-slate-400 hover:text-red-500 text-xl ml-4"><i class="fas fa-times"></i></button>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Sede</label>
+                        <select id="f-sede" class="input-field">
+                            <option value="Moche">Moche</option>
+                            <option value="Piura">Piura</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Tipo de Rol</label>
+                    <select id="f-tipo" class="input-field">
+                        <option value="Operativo">Operativo</option>
+                        <option value="Administrativo">Administrativo</option>
+                    </select>
+                </div>
+                <div class="bg-blue-50/50 p-4 rounded-xl space-y-4 border border-blue-100">
+                    <p class="text-[11px] font-black text-blue-600 uppercase flex items-center gap-2"><i class="fas fa-calculator"></i> Gestión de Días (Mes)</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="text-[9px] font-bold text-slate-500 uppercase">Días Lab.</label><input type="number" id="f-lab" class="input-field" value="0"></div>
+                        <div><label class="text-[9px] font-bold text-slate-500 uppercase">Faltas</label><input type="number" id="f-faltas" class="input-field" value="0"></div>
+                        <div><label class="text-[9px] font-bold text-slate-500 uppercase">Permisos</label><input type="number" id="f-perm" class="input-field" value="0"></div>
+                        <div><label class="text-[9px] font-bold text-slate-500 uppercase">Desc. Médico</label><input type="number" id="f-desc" class="input-field" value="0"></div>
+                    </div>
                 </div>
             </div>
-            <div class="p-4 overflow-x-auto max-h-[70vh] overflow-y-auto">
-                <table class="w-full text-xs">
-                    <thead class="sticky top-0 bg-white z-10">
-                        <tr class="text-left text-slate-400 uppercase font-black border-b">
-                            <th class="pb-2 pl-2">Fecha / Día</th>
-                            <th class="pb-2">Entrada</th>
-                            <th class="pb-2">Salida</th>
-                            <th class="pb-2 text-center">Refr. (h)</th>
-                            <th class="pb-2 text-center">H.E 25%</th>
-                            <th class="pb-2 text-center">H.E 35%</th>
-                            <th class="pb-2 text-center">H.E 100%</th>
-                            <th class="pb-2 text-center">Feriado?</th>
-                        </tr>
-                    </thead>
-                    <tbody id="asistencia-mes-body"></tbody>
-                </table>
-            </div>
-            <div class="p-4 bg-slate-50 border-t flex justify-between items-center">
-                <p class="text-[10px] text-slate-400 italic">* Los domingos y feriados calculan automáticamente 100% sobre el total laborado.</p>
-                <div class="flex gap-3">
-                    <button onclick="closeAsistenciaModal()" class="px-6 py-2 text-xs font-bold text-slate-600">Cancelar</button>
-                    <button onclick="guardarAsistenciaMes()" class="px-6 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-lg shadow-blue-200">Guardar Cambios</button>
-                </div>
+            <div class="p-5 border-t bg-slate-50 flex justify-end gap-3">
+                <button onclick="closeModal()" class="px-4 py-2 text-xs font-bold text-slate-400">DESCARTAR</button>
+                <button onclick="guardarPersonal()" class="px-8 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-100">GUARDAR FICHA</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal Personal -->
-    <div id="modal-personal" class="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 hidden p-4">
-        <div class="bg-white rounded-xl w-full max-w-md shadow-2xl">
-            <div class="p-4 border-b font-bold text-slate-700">Ficha del Trabajador</div>
-            <div class="p-6 space-y-3">
-                <input type="text" id="f-nombre" placeholder="Nombre Completo" class="input-field">
-                <input type="text" id="f-dni" placeholder="DNI" class="input-field">
-                <input type="text" id="f-telf" placeholder="Teléfono" class="input-field">
-                <div class="grid grid-cols-2 gap-2">
-                    <select id="f-sede" class="input-field">
-                        <option value="Moche">Sede Moche</option>
-                        <option value="Piura">Sede Piura</option>
-                    </select>
-                    <select id="f-tipo" class="input-field">
-                        <option value="Administrativo">Administrativo</option>
-                        <option value="Operativo">Operativo</option>
-                    </select>
+    <!-- Modal Registro Asistencia -->
+    <div id="modal-asistencia" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 hidden p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl w-full max-w-6xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
+            <div class="p-5 border-b bg-white flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg" id="at-initial">?</div>
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-lg leading-tight" id="at-nombre-tit">Nombre</h3>
+                        <p id="at-sub-info" class="text-[10px] text-slate-400 font-bold uppercase tracking-widest"></p>
+                    </div>
                 </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="number" id="f-dias-lab" placeholder="Días Lab." class="input-field">
-                    <input type="number" id="f-faltas" placeholder="Faltas" class="input-field">
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="number" id="f-permisos" placeholder="Permisos" class="input-field">
-                    <input type="number" id="f-descansos" placeholder="Desc. Médicos" class="input-field">
-                </div>
+                <button onclick="closeAsistenciaModal()" class="w-8 h-8 rounded-full hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors flex items-center justify-center"><i class="fas fa-times"></i></button>
             </div>
-            <div class="p-4 border-t flex justify-end gap-2">
-                <button onclick="closeModal()" class="px-4 py-2 text-xs font-bold">Cerrar</button>
-                <button onclick="guardarPersonal()" class="px-4 py-2 bg-blue-600 text-white rounded text-xs font-bold">Guardar</button>
+            <div class="p-6 overflow-auto flex-1">
+                <table class="w-full text-xs">
+                    <thead class="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_#e2e8f0]">
+                        <tr class="text-left text-slate-400 uppercase font-black">
+                            <th class="pb-3 px-2">Día</th>
+                            <th class="pb-3 px-2">Entrada</th>
+                            <th class="pb-3 px-2">Salida</th>
+                            <th class="pb-3 px-2 text-center">Refri (h)</th>
+                            <th class="pb-3 px-2 text-center">Asistió</th>
+                            <th class="pb-3 px-2 text-center text-blue-600">25%</th>
+                            <th class="pb-3 px-2 text-center text-blue-800">35%</th>
+                            <th class="pb-3 px-2 text-center text-red-600">100%</th>
+                            <th class="pb-3 px-2 text-center">Feriado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="asistencia-mes-body" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+            <div class="p-5 border-t bg-slate-50 flex justify-between items-center">
+                <button onclick="copiarPrimerHorario()" class="text-[10px] bg-white border border-slate-200 px-4 py-2 rounded-lg font-bold hover:bg-slate-100 uppercase transition-all shadow-sm">
+                    <i class="fas fa-copy mr-2"></i>Repetir Horario L-V
+                </button>
+                <div class="flex gap-3">
+                    <button onclick="closeAsistenciaModal()" class="px-6 py-2.5 text-xs font-bold text-slate-400">CANCELAR</button>
+                    <button onclick="guardarAsistenciaMes()" class="px-10 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-xl shadow-blue-100">GUARDAR MES COMPLETO</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Configuración de Horarios Base por Sede/Tipo
-        let HORARIOS = {
-            Moche: {
-                Administrativo: { entrada: "08:00", salida: "17:00", refri: 1 },
-                Operativo: { entrada: "07:30", salida: "17:00", refri: 1 }
-            },
-            Piura: {
-                Administrativo: { entrada: "08:00", salida: "17:00", refri: 1 },
-                Operativo: { entrada: "07:30", salida: "16:30", refri: 0.5 }
+        // VARIABLES DE ESTADO
+        let HORARIOS = JSON.parse(localStorage.getItem('mp_v6_horarios')) || {
+            Moche: { Administrativo: { entrada: "08:00", salida: "17:00", refri: 1 }, Operativo: { entrada: "07:30", salida: "17:00", refri: 1 } },
+            Piura: { Administrativo: { entrada: "08:00", salida: "17:00", refri: 1 }, Operativo: { entrada: "07:30", salida: "16:30", refri: 0.5 } }
+        };
+
+        let personal = JSON.parse(localStorage.getItem('mp_v6_personal')) || [];
+        let currentWorkerIdx = -1;
+        let editIdx = -1;
+        const DIAS_SEM = ["DOM", "LUN", "MAR", "MIE", "JUE", "VIE", "SAB"];
+        const mesActual = new Date().getMonth();
+        const anioActual = new Date().getFullYear();
+
+        // --- FUNCIONES GLOBALES (VINCULADAS A WINDOW) ---
+        
+        window.deletePersonal = function(idx) {
+            if (idx < 0 || idx >= personal.length) return;
+            const nombre = personal[idx].nombre;
+            if(confirm(`¿Deseas eliminar permanentemente a ${nombre}?`)) {
+                personal.splice(idx, 1);
+                persist();
+                renderPersonal();
+                if(!document.getElementById('section-asistencia').classList.contains('hidden')) {
+                    renderAsistencia();
+                }
             }
         };
 
-        const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-        const hoy = new Date();
-        const mesActual = hoy.getMonth();
-        const anioActual = hoy.getFullYear();
+        window.limpiarTodo = function() { 
+            if(confirm("ADVERTENCIA: Esta opción borrará TODOS los trabajadores y datos guardados para siempre. ¿Deseas resetear la aplicación?")) { 
+                localStorage.clear(); 
+                personal = [];
+                location.reload(); 
+            } 
+        };
 
-        let personal = [
-            { id: 1, nombre: "Carlos Perez", dni: "12345678", telf: "987", sede: "Moche", tipo: "Administrativo", diasLab: 30, faltas: 0, permisos: 0, descansos: 0, registroAsis: [] },
-            { id: 2, nombre: "Juan Operario", dni: "87654321", telf: "999", sede: "Moche", tipo: "Operativo", diasLab: 30, faltas: 0, permisos: 0, descansos: 0, registroAsis: [] },
-            { id: 3, nombre: "Ana Admin Piura", dni: "11223344", telf: "555", sede: "Piura", tipo: "Administrativo", diasLab: 30, faltas: 0, permisos: 0, descansos: 0, registroAsis: [] },
-            { id: 4, nombre: "Luis Operario Piura", dni: "55667788", telf: "444", sede: "Piura", tipo: "Operativo", diasLab: 30, faltas: 0, permisos: 0, descansos: 0, registroAsis: [] }
-        ];
+        // --- LÓGICA DE PERSISTENCIA ---
 
-        let currentWorkerIdx = -1;
+        function persist() {
+            try {
+                localStorage.setItem('mp_v6_personal', JSON.stringify(personal));
+                localStorage.setItem('mp_v6_horarios', JSON.stringify(HORARIOS));
+                const msg = document.getElementById('save-msg');
+                msg.style.display = 'block';
+                setTimeout(() => msg.style.display = 'none', 1000);
+            } catch (e) {
+                console.error("Error al guardar en LocalStorage:", e);
+            }
+        }
+
+        // --- RENDERIZADO Y NAVEGACIÓN ---
 
         function showSection(section) {
             document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
-            const target = document.getElementById('section-' + section);
-            if(target) target.classList.remove('hidden');
-            
+            document.getElementById('section-' + section).classList.remove('hidden');
             document.querySelectorAll('.sidebar-item').forEach(b => b.classList.remove('sidebar-active'));
-            const btn = document.getElementById('btn-' + section);
-            if(btn) btn.classList.add('sidebar-active');
-            
-            if(section === 'asistencia') renderAsistencia();
+            document.getElementById('btn-' + section).classList.add('sidebar-active');
             if(section === 'personal') renderPersonal();
+            if(section === 'asistencia') renderAsistencia();
             if(section === 'config') renderConfig();
-        }
-
-        function renderAsistencia() {
-            const label = document.getElementById('mes-actual-label');
-            if(label) label.innerText = `- ${MESES[mesActual]} ${anioActual}`;
-            
-            const container = document.getElementById('grupos-asistencia');
-            if(!container) return;
-            container.innerHTML = '';
-            
-            const grupos = [
-                { s: 'Moche', t: 'Administrativo' }, { s: 'Moche', t: 'Operativo' },
-                { s: 'Piura', t: 'Administrativo' }, { s: 'Piura', t: 'Operativo' }
-            ];
-
-            grupos.forEach(g => {
-                const lista = personal.filter(p => p.sede === g.s && p.tipo === g.t);
-                if(lista.length === 0) return;
-
-                const div = document.createElement('div');
-                div.className = "glass-card overflow-hidden";
-                div.innerHTML = `
-                    <div class="bg-slate-800 text-white px-4 py-2 text-[10px] font-black flex justify-between items-center tracking-widest">
-                        <span>${g.s.toUpperCase()} | ${g.t.toUpperCase()}S</span>
-                        <span class="bg-slate-700 px-2 py-0.5 rounded">${lista.length} PERSONAS</span>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-[11px] text-left">
-                            <thead class="table-header border-b">
-                                <tr>
-                                    <th class="p-3">Nombre</th>
-                                    <th class="p-3 text-center">Días Lab.</th>
-                                    <th class="p-3 text-center">Faltas</th>
-                                    <th class="p-3 text-center">H.E 25%</th>
-                                    <th class="p-3 text-center">H.E 35%</th>
-                                    <th class="p-3 text-center">H.E 100%</th>
-                                    <th class="p-3 text-right">Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                ${lista.map(p => {
-                                    const hes = calcularTotalesMes(p);
-                                    return `
-                                    <tr class="hover:bg-slate-50 transition-colors">
-                                        <td class="p-3 font-bold text-slate-700">${p.nombre}</td>
-                                        <td class="p-3 text-center font-bold text-slate-500">${p.diasLab}</td>
-                                        <td class="p-3 text-center font-bold ${p.faltas > 0 ? 'text-red-500' : 'text-slate-400'}">${p.faltas}</td>
-                                        <td class="p-3 text-center font-black text-blue-600">${hes.h25}h</td>
-                                        <td class="p-3 text-center font-black text-blue-800">${hes.h35}h</td>
-                                        <td class="p-3 text-center font-black text-red-600">${hes.h100}h</td>
-                                        <td class="p-3 text-right">
-                                            <button onclick="openAsistenciaModal(${personal.indexOf(p)})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm flex items-center gap-1 float-right">
-                                                <i class="fas fa-edit text-[10px]"></i> ASISTENCIA
-                                            </button>
-                                        </td>
-                                    </tr>`;
-                                }).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function getDiasDelMes() {
-            return new Date(anioActual, mesActual + 1, 0).getDate();
-        }
-
-        function openAsistenciaModal(idx) {
-            currentWorkerIdx = idx;
-            const p = personal[idx];
-            const config = HORARIOS[p.sede][p.tipo];
-            
-            const titleEl = document.getElementById('at-nombre-tit');
-            const infoEl = document.getElementById('at-sub-info');
-            const bodyEl = document.getElementById('asistencia-mes-body');
-
-            if(titleEl) titleEl.innerText = p.nombre;
-            if(infoEl) infoEl.innerText = `${p.sede} | ${p.tipo} | Horario Base: ${config.entrada} - ${config.salida}`;
-            
-            if(!bodyEl) return;
-            bodyEl.innerHTML = '';
-
-            const numDias = getDiasDelMes();
-            const nombresDias = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
-
-            for(let d=1; d<=numDias; d++) {
-                const fechaDate = new Date(anioActual, mesActual, d);
-                const diaSemana = nombresDias[fechaDate.getDay()];
-                const isDom = fechaDate.getDay() === 0;
-
-                // Si no hay registro previo, precargar horario base excepto domingos
-                const r = p.registroAsis[d-1] || { 
-                    in: isDom ? "" : config.entrada, 
-                    out: isDom ? "" : config.salida, 
-                    refri: config.refri,
-                    h25: 0, h35: 0, h100: 0, feriado: isDom 
-                };
-
-                const tr = document.createElement('tr');
-                tr.className = `border-b border-slate-50 hover:bg-slate-50 transition-colors ${isDom ? 'domingo-row' : ''}`;
-                tr.innerHTML = `
-                    <td class="py-3 pl-2 font-bold ${isDom ? 'text-red-500' : 'text-slate-600'}">
-                        ${d < 10 ? '0'+d : d}/${(mesActual+1) < 10 ? '0'+(mesActual+1) : (mesActual+1)} <span class="text-[9px] uppercase opacity-60 ml-1">${diaSemana}</span>
-                    </td>
-                    <td><input type="time" class="input-field w-24 time-in" value="${r.in}" onchange="calcularHEFila(this)"></td>
-                    <td><input type="time" class="input-field w-24 time-out" value="${r.out}" onchange="calcularHEFila(this)"></td>
-                    <td><input type="number" step="0.5" class="input-field w-16 text-center input-refri" value="${r.refri}" onchange="calcularHEFila(this)"></td>
-                    <td class="h25 text-center font-bold text-blue-600">${r.h25}</td>
-                    <td class="h35 text-center font-bold text-blue-800">${r.h35}</td>
-                    <td class="h100 text-center font-bold text-red-600">${r.h100}</td>
-                    <td class="text-center">
-                        <input type="checkbox" class="feriado-chk w-4 h-4 accent-red-500" ${r.feriado ? 'checked' : ''} onchange="calcularHEFila(this)">
-                    </td>
-                `;
-                bodyEl.appendChild(tr);
-                if(r.in && r.out) calcularHEFila(tr.querySelector('.time-in'));
-            }
-            
-            const modal = document.getElementById('modal-asistencia');
-            if(modal) modal.classList.remove('hidden');
-            actualizarSumaModal();
-        }
-
-        function calcularHEFila(el) {
-            const row = el.closest('tr');
-            const tIn = row.querySelector('.time-in').value;
-            const tOut = row.querySelector('.time-out').value;
-            const refri = parseFloat(row.querySelector('.input-refri').value) || 0;
-            const isFeriado = row.querySelector('.feriado-chk').checked;
-            
-            const p = personal[currentWorkerIdx];
-            const config = HORARIOS[p.sede][p.tipo];
-
-            if(!tIn || !tOut) {
-                row.querySelector('.h25').innerText = "0.0";
-                row.querySelector('.h35').innerText = "0.0";
-                row.querySelector('.h100').innerText = "0.0";
-                actualizarSumaModal();
-                return;
-            }
-
-            const [hIn, mIn] = tIn.split(':').map(Number);
-            const [hOut, mOut] = tOut.split(':').map(Number);
-            const [hBaseIn, mBaseIn] = config.entrada.split(':').map(Number);
-            const [hBaseOut, mBaseOut] = config.salida.split(':').map(Number);
-
-            const minsIn = hIn * 60 + mIn;
-            const minsOut = hOut * 60 + mOut;
-            const minsBaseIn = hBaseIn * 60 + mBaseIn;
-            const minsBaseOut = hBaseOut * 60 + mBaseOut;
-
-            let totalMinsLab = minsOut - minsIn;
-            if(totalMinsLab < 0) totalMinsLab += 1440;
-
-            const efectivoMins = totalMinsLab - (refri * 60);
-            
-            let h25 = 0, h35 = 0, h100 = 0;
-
-            if(isFeriado) {
-                h100 = (efectivoMins / 60).toFixed(1);
-            } else {
-                const jornadaBaseMins = minsBaseOut - minsBaseIn - (config.refri * 60);
-                const excesoMins = efectivoMins - jornadaBaseMins;
-
-                if(excesoMins > 0) {
-                    const excesoHoras = excesoMins / 60;
-                    h25 = Math.min(2, excesoHoras).toFixed(1);
-                    h35 = Math.max(0, excesoHoras - 2).toFixed(1);
-                }
-            }
-
-            row.querySelector('.h25').innerText = h25;
-            row.querySelector('.h35').innerText = h35;
-            row.querySelector('.h100').innerText = h100;
-            
-            actualizarSumaModal();
-        }
-
-        function actualizarSumaModal() {
-            let s25 = 0, s35 = 0, s100 = 0;
-            document.querySelectorAll('#asistencia-mes-body tr').forEach(row => {
-                s25 += parseFloat(row.querySelector('.h25').innerText) || 0;
-                s35 += parseFloat(row.querySelector('.h35').innerText) || 0;
-                s100 += parseFloat(row.querySelector('.h100').innerText) || 0;
-            });
-            const totalesEl = document.getElementById('totales-modal');
-            if(totalesEl) totalesEl.innerText = `25%: ${s25.toFixed(1)}h | 35%: ${s35.toFixed(1)}h | 100%: ${s100.toFixed(1)}h`;
-        }
-
-        function guardarAsistenciaMes() {
-            const rows = document.querySelectorAll('#asistencia-mes-body tr');
-            const nuevoRegistro = [];
-            rows.forEach((row) => {
-                nuevoRegistro.push({
-                    in: row.querySelector('.time-in').value,
-                    out: row.querySelector('.time-out').value,
-                    refri: parseFloat(row.querySelector('.input-refri').value) || 0,
-                    h25: parseFloat(row.querySelector('.h25').innerText) || 0,
-                    h35: parseFloat(row.querySelector('.h35').innerText) || 0,
-                    h100: parseFloat(row.querySelector('.h100').innerText) || 0,
-                    feriado: row.querySelector('.feriado-chk').checked
-                });
-            });
-            personal[currentWorkerIdx].registroAsis = nuevoRegistro;
-            closeAsistenciaModal();
-            renderAsistencia();
-        }
-
-        function calcularTotalesMes(p) {
-            let t = { h25: 0, h35: 0, h100: 0 };
-            p.registroAsis.forEach(r => {
-                t.h25 += r.h25;
-                t.h35 += r.h35;
-                t.h100 += r.h100;
-            });
-            return { h25: t.h25.toFixed(1), h35: t.h35.toFixed(1), h100: t.h100.toFixed(1) };
-        }
-
-        function renderConfig() {
-            const grid = document.getElementById('config-grid');
-            if(!grid) return;
-            grid.innerHTML = '';
-            
-            for(let sede in HORARIOS) {
-                for(let tipo in HORARIOS[sede]) {
-                    const c = HORARIOS[sede][tipo];
-                    const card = document.createElement('div');
-                    card.className = "glass-card p-4";
-                    card.innerHTML = `
-                        <h4 class="font-black text-slate-700 text-xs mb-3 uppercase tracking-tighter">${sede} - ${tipo}</h4>
-                        <div class="grid grid-cols-3 gap-2">
-                            <div>
-                                <label class="text-[9px] font-bold text-slate-400">ENTRADA</label>
-                                <input type="time" class="input-field" value="${c.entrada}" onchange="updateHorarioBase('${sede}', '${tipo}', 'entrada', this.value)">
-                            </div>
-                            <div>
-                                <label class="text-[9px] font-bold text-slate-400">SALIDA</label>
-                                <input type="time" class="input-field" value="${c.salida}" onchange="updateHorarioBase('${sede}', '${tipo}', 'salida', this.value)">
-                            </div>
-                            <div>
-                                <label class="text-[9px] font-bold text-slate-400">REFRI (H)</label>
-                                <input type="number" step="0.5" class="input-field" value="${c.refri}" onchange="updateHorarioBase('${sede}', '${tipo}', 'refri', this.value)">
-                            </div>
-                        </div>
-                    `;
-                    grid.appendChild(card);
-                }
-            }
-        }
-
-        function updateHorarioBase(sede, tipo, campo, valor) {
-            HORARIOS[sede][tipo][campo] = campo === 'refri' ? parseFloat(valor) : valor;
         }
 
         function renderPersonal() {
             const container = document.getElementById('lista-personal');
-            if(!container) return;
+            if (!container) return;
+            
+            if (personal.length === 0) {
+                container.innerHTML = '<div class="col-span-full py-12 text-center text-slate-400 font-medium italic">No hay trabajadores registrados.</div>';
+                return;
+            }
+
             container.innerHTML = personal.map((p, i) => `
-                <div class="glass-card p-4 relative group hover:border-blue-200 transition-all">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h4 class="font-bold text-slate-800">${p.nombre}</h4>
-                            <p class="text-[10px] text-slate-400">DNI: ${p.dni} | SEDE: ${p.sede}</p>
-                        </div>
-                        <span class="text-[9px] px-2 py-0.5 rounded bg-blue-50 font-black uppercase text-blue-600 border border-blue-100">${p.tipo}</span>
+                <div class="glass-card p-5 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-3">
+                        <span class="text-[9px] px-2 py-1 rounded-full ${p.tipo==='Operativo'?'bg-indigo-50 text-indigo-600':'bg-amber-50 text-amber-600'} font-bold uppercase tracking-tighter">${p.tipo}</span>
                     </div>
-                    <div class="mt-4 pt-3 border-t flex gap-2">
-                        <button onclick="editPersonal(${i})" class="flex-1 bg-slate-50 text-slate-600 py-1.5 rounded text-[10px] font-bold hover:bg-blue-600 hover:text-white transition-all">EDITAR FICHA</button>
-                        <button onclick="deletePersonal(${i})" class="w-8 bg-red-50 text-red-500 rounded flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"><i class="fas fa-trash"></i></button>
+                    
+                    <div class="mb-5">
+                        <h4 class="font-bold text-slate-800 text-lg leading-tight mb-1">${p.nombre}</h4>
+                        <p class="text-[11px] text-slate-400 font-bold uppercase tracking-widest">DNI: ${p.dni || '---'} | ${p.sede}</p>
+                    </div>
+
+                    <div class="flex gap-3 mb-6">
+                        <div class="stat-box bg-indigo-50 text-indigo-600">
+                            <div class="text-[8px] font-black uppercase opacity-60">LAB</div>
+                            <div class="text-lg font-bold">${p.dLab || 0}</div>
+                        </div>
+                        <div class="stat-box bg-rose-50 text-rose-600">
+                            <div class="text-[8px] font-black uppercase opacity-60">FAL</div>
+                            <div class="text-lg font-bold">${p.dFalt || 0}</div>
+                        </div>
+                        <div class="stat-box bg-amber-50 text-amber-600">
+                            <div class="text-[8px] font-black uppercase opacity-60">PER</div>
+                            <div class="text-lg font-bold">${p.dPerm || 0}</div>
+                        </div>
+                        <div class="stat-box bg-emerald-50 text-emerald-600">
+                            <div class="text-[8px] font-black uppercase opacity-60">MED</div>
+                            <div class="text-lg font-bold">${p.dDesc || 0}</div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 border-t pt-4">
+                        <button onclick="editPersonal(${i})" class="flex-1 bg-slate-800 text-white py-2 rounded-xl text-[11px] font-bold hover:bg-slate-700 transition-colors uppercase tracking-widest shadow-lg shadow-slate-200">
+                            EDITAR FICHA
+                        </button>
+                        <button onclick="window.deletePersonal(${i})" class="w-10 h-10 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center border border-red-100" title="Eliminar trabajador">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
                     </div>
                 </div>
             `).join('');
-        }
-
-        function openModal() { editIdx = -1; document.getElementById('modal-personal').classList.remove('hidden'); resetForm(); }
-        function closeModal() { document.getElementById('modal-personal').classList.add('hidden'); }
-        function closeAsistenciaModal() { document.getElementById('modal-asistencia').classList.add('hidden'); }
-
-        function resetForm() {
-            document.getElementById('f-nombre').value = '';
-            document.getElementById('f-dni').value = '';
-            document.getElementById('f-telf').value = '';
-            document.getElementById('f-dias-lab').value = 30;
-            document.getElementById('f-faltas').value = 0;
-            document.getElementById('f-permisos').value = 0;
-            document.getElementById('f-descansos').value = 0;
         }
 
         function guardarPersonal() {
             const data = {
                 nombre: document.getElementById('f-nombre').value,
                 dni: document.getElementById('f-dni').value,
-                telf: document.getElementById('f-telf').value,
                 sede: document.getElementById('f-sede').value,
                 tipo: document.getElementById('f-tipo').value,
-                diasLab: document.getElementById('f-dias-lab').value || 30,
-                faltas: document.getElementById('f-faltas').value || 0,
-                permisos: document.getElementById('f-permisos').value || 0,
-                descansos: document.getElementById('f-descansos').value || 0,
-                registroAsis: editIdx === -1 ? [] : personal[editIdx].registroAsis
+                dLab: parseInt(document.getElementById('f-lab').value) || 0,
+                dDesc: parseInt(document.getElementById('f-desc').value) || 0,
+                dPerm: parseInt(document.getElementById('f-perm').value) || 0,
+                dFalt: parseInt(document.getElementById('f-faltas').value) || 0,
+                registroAsis: editIdx === -1 ? [] : (personal[editIdx].registroAsis || [])
             };
-            if(!data.nombre || !data.dni) return;
-
+            if(!data.nombre) return;
             if(editIdx === -1) personal.push(data);
             else personal[editIdx] = data;
-            closeModal();
-            renderPersonal();
-            renderAsistencia();
+            persist(); closeModal(); renderPersonal();
         }
 
-        let editIdx = -1;
         function editPersonal(idx) {
-            editIdx = idx;
-            const p = personal[idx];
+            editIdx = idx; const p = personal[idx];
             document.getElementById('f-nombre').value = p.nombre;
             document.getElementById('f-dni').value = p.dni;
-            document.getElementById('f-telf').value = p.telf;
             document.getElementById('f-sede').value = p.sede;
             document.getElementById('f-tipo').value = p.tipo;
-            document.getElementById('f-dias-lab').value = p.diasLab;
-            document.getElementById('f-faltas').value = p.faltas;
-            document.getElementById('f-permisos').value = p.permisos;
-            document.getElementById('f-descansos').value = p.descansos;
+            document.getElementById('f-lab').value = p.dLab || 0;
+            document.getElementById('f-desc').value = p.dDesc || 0;
+            document.getElementById('f-perm').value = p.dPerm || 0;
+            document.getElementById('f-faltas').value = p.dFalt || 0;
             document.getElementById('modal-personal').classList.remove('hidden');
         }
 
-        function deletePersonal(idx) {
-            if(confirm('¿Eliminar trabajador?')) {
-                personal.splice(idx, 1);
-                renderPersonal();
-                renderAsistencia();
+        // --- ASISTENCIA Y CÁLCULOS ---
+
+        function openAsistenciaModal(idx) {
+            currentWorkerIdx = idx;
+            const p = personal[idx];
+            const config = HORARIOS[p.sede][p.tipo];
+            document.getElementById('at-nombre-tit').innerText = p.nombre;
+            document.getElementById('at-initial').innerText = p.nombre.charAt(0).toUpperCase();
+            document.getElementById('at-sub-info').innerText = `${p.sede} | ${p.tipo}`;
+            const bodyEl = document.getElementById('asistencia-mes-body');
+            bodyEl.innerHTML = '';
+
+            const numDias = new Date(anioActual, mesActual + 1, 0).getDate();
+            for(let d=1; d<=numDias; d++) {
+                const fDate = new Date(anioActual, mesActual, d);
+                const dayNum = fDate.getDay(); 
+                const isDom = dayNum === 0;
+                const isSab = dayNum === 6;
+                const isMie = dayNum === 3;
+                
+                let defIn = config.entrada, defOut = config.salida, defRef = config.refri;
+                if (isMie) { defOut = (p.sede === "Moche") ? "17:30" : "17:00"; } 
+                else if (isSab) { defOut = (p.sede === "Moche") ? "13:00" : "12:30"; defRef = 0; }
+                if (isDom) { defIn = ""; defOut = ""; defRef = 0; }
+
+                const r = (p.registroAsis && p.registroAsis[d-1]) || { in: defIn, out: defOut, refri: defRef, h25: 0, h35: 0, h100: 0, feriado: isDom, lab: !isDom };
+
+                const tr = document.createElement('tr');
+                tr.className = `hover:bg-slate-50 transition-colors ${isDom ? 'bg-rose-50/20' : ''}`;
+                tr.innerHTML = `
+                    <td class="py-3 px-2 font-bold ${isDom ? 'text-rose-500' : 'text-slate-500'}">${d} <span class="text-[9px] font-medium opacity-50 ml-1">${DIAS_SEM[dayNum]}</span></td>
+                    <td class="py-2"><input type="time" class="input-field w-28 time-in" value="${r.in}" onchange="calcularHEFila(this)"></td>
+                    <td class="py-2"><input type="time" class="input-field w-28 time-out" value="${r.out}" onchange="calcularHEFila(this)"></td>
+                    <td class="py-2"><input type="number" step="0.1" class="input-field w-16 text-center input-refri" value="${r.refri}" onchange="calcularHEFila(this)"></td>
+                    <td class="text-center"><input type="checkbox" class="w-4 h-4 rounded lab-chk" ${r.lab ? 'checked' : ''} onchange="calcularHEFila(this)"></td>
+                    <td class="h25 text-center font-bold text-blue-600">${r.h25 || '0.0'}</td>
+                    <td class="h35 text-center font-bold text-blue-800">${r.h35 || '0.0'}</td>
+                    <td class="h100 text-center font-bold text-rose-600">${r.h100 || '0.0'}</td>
+                    <td class="text-center"><input type="checkbox" class="w-4 h-4 rounded accent-rose-500 feriado-chk" ${r.feriado ? 'checked' : ''} onchange="calcularHEFila(this)"></td>
+                `;
+                bodyEl.appendChild(tr);
+                if(r.in && r.out && r.lab) calcularHEFila(tr.querySelector('.time-in'));
             }
+            document.getElementById('modal-asistencia').classList.remove('hidden');
         }
+
+        function calcularHEFila(el) {
+            const row = el.closest('tr');
+            const tIn = row.querySelector('.time-in').value, tOut = row.querySelector('.time-out').value;
+            const refri = parseFloat(row.querySelector('.input-refri').value) || 0;
+            const isFeriado = row.querySelector('.feriado-chk').checked, isLab = row.querySelector('.lab-chk').checked;
+            const p = personal[currentWorkerIdx], config = HORARIOS[p.sede][p.tipo];
+
+            if(!tIn || !tOut || !isLab) {
+                row.querySelector('.h25').innerText = "0.0"; row.querySelector('.h35').innerText = "0.0"; row.querySelector('.h100').innerText = "0.0";
+                return;
+            }
+
+            const [hI, mI] = tIn.split(':').map(Number), [hO, mO] = tOut.split(':').map(Number);
+            let totalMins = (hO*60+mO) - (hI*60+mI);
+            if(totalMins < 0) totalMins += 1440;
+            const efectivoMins = totalMins - (refri*60);
+            
+            let h25 = 0, h35 = 0, h100 = 0;
+            if(isFeriado) { h100 = (efectivoMins/60).toFixed(1); } 
+            else {
+                const dayLabel = row.querySelector('td').innerText;
+                const isSab = dayLabel.includes("SAB"), isMie = dayLabel.includes("MIE");
+                let jornadaBaseMins;
+                if(isSab) {
+                    const sOut = (p.sede === "Moche") ? "13:00" : "12:30";
+                    const [hbI, mbI] = config.entrada.split(':').map(Number), [hbO, mbO] = sOut.split(':').map(Number);
+                    jornadaBaseMins = (hbO*60+mbO) - (hbI*60+mbI); 
+                } else if(isMie) {
+                    const sOut = (p.sede === "Moche") ? "17:30" : "17:00";
+                    const [hbI, mbI] = config.entrada.split(':').map(Number), [hbO, mbO] = sOut.split(':').map(Number);
+                    jornadaBaseMins = (hbO*60+mbO) - (hbI*60+mbI) - (config.refri*60);
+                } else {
+                    const [hbI, mbI] = config.entrada.split(':').map(Number), [hbO, mbO] = config.salida.split(':').map(Number);
+                    jornadaBaseMins = (hbO*60+mbO) - (hbI*60+mbI) - (config.refri*60);
+                }
+                const exceso = efectivoMins - jornadaBaseMins;
+                if(exceso > 0.05) {
+                    h25 = Math.min(2, exceso/60).toFixed(1);
+                    h35 = Math.max(0, (exceso/60) - 2).toFixed(1);
+                }
+            }
+            row.querySelector('.h25').innerText = h25; row.querySelector('.h35').innerText = h35; row.querySelector('.h100').innerText = h100;
+        }
+
+        function guardarAsistenciaMes() {
+            const rows = document.querySelectorAll('#asistencia-mes-body tr');
+            const nuevoReg = [];
+            rows.forEach(row => {
+                nuevoReg.push({
+                    in: row.querySelector('.time-in').value, out: row.querySelector('.time-out').value,
+                    refri: parseFloat(row.querySelector('.input-refri').value) || 0,
+                    h25: parseFloat(row.querySelector('.h25').innerText) || 0,
+                    h35: parseFloat(row.querySelector('.h35').innerText) || 0,
+                    h100: parseFloat(row.querySelector('.h100').innerText) || 0,
+                    feriado: row.querySelector('.feriado-chk').checked, lab: row.querySelector('.lab-chk').checked
+                });
+            });
+            personal[currentWorkerIdx].registroAsis = nuevoReg;
+            persist(); closeAsistenciaModal(); renderAsistencia();
+        }
+
+        function renderAsistencia() {
+            const container = document.getElementById('grupos-asistencia'); 
+            if (!container) return;
+            container.innerHTML = '';
+            ["Moche", "Piura"].forEach(s => {
+                ["Operativo", "Administrativo"].forEach(t => {
+                    const filtrados = personal.filter(p => p.sede === s && p.tipo === t);
+                    if(filtrados.length === 0) return;
+                    const div = document.createElement('div');
+                    div.className = "glass-card overflow-hidden border border-slate-200";
+                    div.innerHTML = `<div class="bg-slate-800 text-white px-6 py-3 text-[11px] font-black uppercase tracking-widest flex justify-between">
+                            <span>Sede ${s} · ${t}s</span>
+                            <span>${filtrados.length} Colaborador(es)</span>
+                        </div>
+                        <table class="w-full text-[11px]"><tbody class="divide-y divide-slate-100">
+                            ${filtrados.map(p => {
+                                const h = calcularTotalesHE(p);
+                                return `<tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="px-6 py-4 font-bold text-slate-700 w-1/3">${p.nombre}</td>
+                                    <td class="px-6 py-4 text-blue-600 font-bold"><span class="bg-blue-50 px-2 py-1 rounded">25%: ${h.h25}h</span></td>
+                                    <td class="px-6 py-4 text-blue-800 font-bold"><span class="bg-blue-100/50 px-2 py-1 rounded">35%: ${h.h35}h</span></td>
+                                    <td class="px-6 py-4 text-rose-600 font-bold"><span class="bg-rose-50 px-2 py-1 rounded">100%: ${h.h100}h</span></td>
+                                    <td class="px-6 py-4 text-right">
+                                        <button onclick="openAsistenciaModal(${personal.indexOf(p)})" class="bg-white border border-blue-200 text-blue-600 px-4 py-1.5 rounded-lg text-[9px] font-black hover:bg-blue-600 hover:text-white transition-all shadow-sm uppercase tracking-tighter">
+                                            MARCACIONES
+                                        </button>
+                                    </td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody></table>`;
+                    container.appendChild(div);
+                });
+            });
+        }
+
+        function calcularTotalesHE(p) {
+            let t = { h25: 0, h35: 0, h100: 0 };
+            if (p.registroAsis) p.registroAsis.forEach(r => { t.h25 += (r.h25 || 0); t.h35 += (r.h35 || 0); t.h100 += (r.h100 || 0); });
+            return { h25: t.h25.toFixed(1), h35: t.h35.toFixed(1), h100: t.h100.toFixed(1) };
+        }
+
+        // --- EXPORTACIÓN Y CONFIG ---
 
         function exportToExcel() {
             const wb = XLSX.utils.book_new();
-            const mesStr = MESES[mesActual].toUpperCase();
-            
-            const grupos = [
-                { s: 'Moche', t: 'Administrativo' }, { s: 'Moche', t: 'Operativo' },
-                { s: 'Piura', t: 'Administrativo' }, { s: 'Piura', t: 'Operativo' }
+            const categorias = [
+                { id: "Moc Ope", sede: "Moche", tipo: "Operativo" },
+                { id: "Piu Ope", sede: "Piura", tipo: "Operativo" },
+                { id: "Moc Adm", sede: "Moche", tipo: "Administrativo" },
+                { id: "Piu Adm", sede: "Piura", tipo: "Administrativo" }
             ];
 
-            grupos.forEach(g => {
-                const lista = personal.filter(p => p.sede === g.s && p.tipo === g.t);
-                if(lista.length === 0) return;
+            categorias.forEach(cat => {
+                const filtrados = personal.filter(p => p.sede === cat.sede && p.tipo === cat.tipo);
+                if (filtrados.length === 0) return;
+                
+                let sheetData = [
+                    ["COLABORADOR", "DNI", "LABORADOS", "FALTAS", "PERMISOS", "D.MÉDICO", "HE 25%", "HE 35%", "HE 100%"]
+                ];
 
-                const data = lista.map(p => {
-                    const h = calcularTotalesMes(p);
-                    return {
-                        "COLABORADOR": p.nombre,
-                        "DNI": p.dni,
-                        "MES": mesStr,
-                        "DÍAS LAB.": p.diasLab,
-                        "FALTAS": p.faltas,
-                        "PERMISOS": p.permisos,
-                        "DESC. MÉDICOS": p.descansos,
-                        "H.E. 25%": h.h25,
-                        "H.E. 35%": h.h35,
-                        "H.E. 100%": h.h100,
-                        "TOTAL H.E.": (parseFloat(h.h25) + parseFloat(h.h35) + parseFloat(h.h100)).toFixed(1)
-                    };
+                filtrados.forEach(p => {
+                    const h = calcularTotalesHE(p);
+                    sheetData.push([
+                        p.nombre, p.dni, p.dLab || 0, p.dFalt || 0, p.dPerm || 0, p.dDesc || 0, 
+                        parseFloat(h.h25), parseFloat(h.h35), parseFloat(h.h100)
+                    ]);
                 });
 
-                const ws = XLSX.utils.json_to_sheet(data);
-                ws['!cols'] = [{wch: 35}, {wch: 12}, {wch: 15}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 15}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 12}];
-                XLSX.utils.book_append_sheet(wb, ws, `${g.s.substring(0,1)}_${g.t.substring(0,3)}`);
+                const ws = XLSX.utils.aoa_to_sheet(sheetData);
+                ws['!cols'] = [{wch: 35}, {wch: 12}, {wch: 12}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}];
+                XLSX.utils.book_append_sheet(wb, ws, cat.id);
             });
 
-            XLSX.writeFile(wb, `Planilla_${mesStr}_${anioActual}.xlsx`);
+            XLSX.writeFile(wb, `Planilla_Prosperidad_${mesActual+1}_${anioActual}.xlsx`);
         }
 
-        window.onload = () => showSection('asistencia');
+        function renderConfig() {
+            const grid = document.getElementById('config-grid'); 
+            if (!grid) return;
+            grid.innerHTML = '';
+            for(let s in HORARIOS) {
+                for(let t in HORARIOS[s]) {
+                    const c = HORARIOS[s][t];
+                    const div = document.createElement('div'); div.className = `glass-card p-6 border-l-4 ${s==='Piura'?'border-l-blue-500':'border-l-orange-500'}`;
+                    div.innerHTML = `<h4 class="text-[11px] font-black text-slate-400 mb-4 uppercase tracking-widest flex items-center gap-2"><i class="fas fa-building"></i> ${s} - ${t}</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">HORA ENTRADA</label>
+                                <input type="time" class="input-field" value="${c.entrada}" onchange="HORARIOS['${s}']['${t}'].entrada=this.value;persist()">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">HORA SALIDA</label>
+                                <input type="time" class="input-field" value="${c.salida}" onchange="HORARIOS['${s}']['${t}'].salida=this.value;persist()">
+                            </div>
+                        </div>`;
+                    grid.appendChild(div);
+                }
+            }
+        }
+
+        function copiarPrimerHorario() {
+            const rows = document.querySelectorAll('#asistencia-mes-body tr');
+            if(rows.length === 0) return;
+            const fIn = rows[0].querySelector('.time-in').value, fOut = rows[0].querySelector('.time-out').value, fRef = rows[0].querySelector('.input-refri').value;
+            rows.forEach((row, i) => {
+                if(i === 0) return;
+                const txt = row.querySelector('td').innerText;
+                if(!row.querySelector('.feriado-chk').checked && !txt.includes("SAB") && !txt.includes("MIE") && !txt.includes("DOM")) {
+                    row.querySelector('.time-in').value = fIn; row.querySelector('.time-out').value = fOut; row.querySelector('.input-refri').value = fRef;
+                    row.querySelector('.lab-chk').checked = true; calcularHEFila(row.querySelector('.time-in'));
+                }
+            });
+        }
+
+        // --- UTILIDADES ---
+
+        function closeModal() { document.getElementById('modal-personal').classList.add('hidden'); }
+        function closeAsistenciaModal() { document.getElementById('modal-asistencia').classList.add('hidden'); }
+        function openModal() { editIdx = -1; document.getElementById('f-nombre').value=''; document.getElementById('f-dni').value=''; document.getElementById('modal-personal').classList.remove('hidden'); }
+        
+        window.onload = () => { renderPersonal(); renderAsistencia(); renderConfig(); };
     </script>
 </body>
 </html>
