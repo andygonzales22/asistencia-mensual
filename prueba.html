@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Asistencia Gx </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .glass-card { background: white; border-radius: 1.5rem; border: 1px solid #f1f5f9; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.01); transition: all 0.3s ease; }
+        .glass-card:hover { transform: translateY(-3px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); }
+        .input-field { border: 1px solid #e2e8f0; padding: 0.6rem 1rem; border-radius: 1rem; width: 100%; outline: none; font-size: 0.875rem; transition: all 0.2s; }
+        .input-field:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+        .sidebar-item { cursor: pointer; color: #64748b; font-size: 0.875rem; font-weight: 600; padding: 0.85rem 1.25rem; border-radius: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.75rem; transition: all 0.2s; }
+        .sidebar-item:hover { background: #f1f5f9; color: #1e293b; }
+        .sidebar-active { background: #2563eb; color: white !important; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.2); }
+        .status-pill { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
+        .save-indicator { position: fixed; bottom: 2rem; right: 2rem; padding: 1rem 2rem; background: #0f172a; color: white; border-radius: 1.25rem; font-size: 0.85rem; display: none; z-index: 100; font-weight: 600; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+        table th { text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.05em; color: #94a3b8; font-weight: 800; padding: 1rem; }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden">
+
+    <div id="save-msg" class="save-indicator"><i class="fas fa-check-circle text-emerald-400 mr-2"></i> Cambios Guardados</div>
+
+    <!-- Navegación Lateral -->
+    <aside class="w-80 bg-white border-r flex flex-col p-8 z-20">
+        <div class="mb-12">
+            <div class="flex items-center gap-3 mb-2">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                    <i class="fas fa-tree text-lg"></i>
+                </div>
+                <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">Maderas Prosperidad</h1>
+            </div> 
+            <p class="text-[10px] text-slate-400 font-bold tracking-[0.2em] uppercase">GxDeveloperFast - Gestion de Asistencia Automático</p>
+        </div>
+        
+        <nav class="flex-1">
+            <div onclick="showSection('personal')" id="btn-personal" class="sidebar-item sidebar-active">
+                <i class="fas fa-users"></i> Colaboradores
+            </div>
+            <div onclick="showSection('asistencia')" id="btn-asistencia" class="sidebar-item">
+                <i class="fas fa-calendar-check"></i> Planilla Actual
+            </div>
+            <div onclick="showSection('historial')" id="btn-historial" class="sidebar-item">
+                <i class="fas fa-database"></i> Base de Datos
+            </div>
+        </nav>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto bg-[#f8fafc] relative">
+        <!-- SECCIÓN COLABORADORES -->
+        <section id="section-personal" class="p-10 space-y-8 max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-3xl font-extrabold text-slate-900">Personal</h2>
+                    <p class="text-slate-500 font-medium">Gestión de trabajadores por sede.</p>
+                </div>
+                <div class="flex gap-3 w-full md:w-auto">
+                    <input type="text" id="search-personal" oninput="renderPersonal()" class="input-field" placeholder="Buscar DNI o Nombre...">
+                    <button onclick="openModal()" class="bg-blue-600 text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-xl shadow-blue-200 hover:bg-blue-700 flex items-center gap-2">
+                        <i class="fas fa-plus"></i> AGREGAR TRABAJADOR
+                    </button>
+                </div>
+            </div>
+            <div id="lista-personal" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </section>
+
+        <!-- SECCIÓN ASISTENCIA -->
+        <section id="section-asistencia" class="hidden p-10 space-y-8 max-w-7xl mx-auto">
+            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-900" id="mes-actual-label">--</h2>
+                    <span class="status-pill bg-emerald-100 text-emerald-600" id="count-personal">0 Trabajadores</span>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="cerrarMes()" class="bg-slate-900 text-white px-6 py-3 rounded-2xl text-xs font-bold hover:bg-black transition-all">CERRAR MES</button>
+                    <button onclick="exportToExcel()" class="bg-emerald-500 text-white px-6 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-emerald-200">
+                        <i class="fas fa-file-excel"></i> DESCARGAR EXCEL
+                    </button>
+                </div>
+            </div>
+            <div id="grupos-asistencia" class="space-y-8"></div>
+        </section>
+
+        <!-- SECCIÓN HISTORIAL -->
+        <section id="section-historial" class="hidden p-10 space-y-8 max-w-5xl mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <h2 class="text-3xl font-extrabold text-slate-900">Historial / DB</h2>
+                <div class="w-full md:w-72">
+                    <input type="text" id="search-historial" oninput="renderHistorial()" class="input-field" placeholder="Filtrar por Nombre o DNI...">
+                </div>
+            </div>
+            <div id="lista-historial" class="grid grid-cols-1 gap-4">
+                <p class="text-slate-400 italic">No hay meses cerrados aún.</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- MODAL PERSONAL -->
+    <div id="modal-personal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-md p-10 space-y-6">
+            <h3 class="text-2xl font-extrabold">Datos del Trabajador</h3>
+            <input type="text" id="f-nombre" class="input-field" placeholder="Nombre completo">
+            <input type="text" id="f-dni" class="input-field" placeholder="DNI">
+            <select id="f-sede" class="input-field"><option>Moche</option><option>Piura</option><option>Cajamarca</option></select>
+            <select id="f-tipo" class="input-field"><option>Operativo</option><option>Administrativo</option></select>
+            <div class="flex gap-4">
+                <button onclick="closeModal()" class="flex-1 text-slate-400 font-bold">CANCELAR</button>
+                <button onclick="guardarPersonal()" class="flex-1 bg-blue-600 text-white rounded-2xl py-4 font-bold">GUARDAR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PLANILLA DETALLE -->
+    <div id="modal-asistencia" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-7xl h-[92vh] flex flex-col overflow-hidden">
+            <div class="p-8 border-b flex justify-between items-center">
+                <h3 class="text-2xl font-black" id="at-nombre-tit">Nombre</h3>
+                <button onclick="closeAsistenciaModal()" class="text-slate-400 text-2xl"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-8 overflow-auto flex-1">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr>
+                            <th class="sticky top-0 bg-white">Día</th>
+                            <th class="sticky top-0 bg-white">Estado</th>
+                            <th class="sticky top-0 bg-white">Entrada</th>
+                            <th class="sticky top-0 bg-white">Salida</th>
+                            <th class="sticky top-0 bg-white">Refri</th>
+                            <th class="sticky top-0 bg-white">Permiso</th>
+                            <th class="sticky top-0 bg-white">25%</th>
+                            <th class="sticky top-0 bg-white">35%</th>
+                            <th class="sticky top-0 bg-white">100%</th>
+                            <th class="sticky top-0 bg-white">Deuda</th>
+                        </tr>
+                    </thead>
+                    <tbody id="asistencia-mes-body"></tbody>
+                </table>
+            </div>
+            <div class="p-8 border-t flex justify-between items-center bg-slate-50">
+                <button onclick="copiarPrimerHorario()" class="bg-slate-900 text-white px-6 py-4 rounded-2xl font-bold hover:bg-black transition-all">AUTO-COMPLETAR MES</button>
+                <button onclick="guardarAsistenciaMes()" class="bg-blue-600 text-white px-12 py-4 rounded-2xl font-bold shadow-xl shadow-blue-200">GUARDAR CAMBIOS</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Estado Inicial ---
+        let personal = JSON.parse(localStorage.getItem('mp_v99_personal')) || [];
+        let historial = JSON.parse(localStorage.getItem('mp_v99_historial')) || [];
+        let currentIdx = -1, editIdx = -1;
+        const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+        const DIAS = ["DOM", "LUN", "MAR", "MIE", "JUE", "VIE", "SAB"];
+        const dH = new Date(); const mAct = dH.getMonth(); const aAct = dH.getFullYear();
+
+        // --- Lógica de Horarios ---
+        function getHorarioTeorico(sede, tipo, diaSem) {
+            let res = { in: "00:00", out: "00:00", refri: 0 };
+            if (diaSem === 0) return res; 
+            if (sede === 'Piura') {
+                if (tipo === 'Operativo') {
+                    if (diaSem === 3) { res.in = "07:30"; res.out = "17:00"; res.refri = 1; }
+                    else if (diaSem === 6) { res.in = "07:30"; res.out = "12:30"; res.refri = 0; }
+                    else { res.in = "07:30"; res.out = "16:30"; res.refri = 0.5; } // Media hora para operativos Piura
+                } else {
+                    if (diaSem === 3) { res.in = "08:00"; res.out = "17:30"; res.refri = 1; }
+                    else if (diaSem === 6) { res.in = "08:00"; res.out = "13:00"; res.refri = 0; }
+                    else { res.in = "08:00"; res.out = "17:00"; res.refri = 1; }
+                }
+            } else {
+                if (tipo === 'Operativo') {
+                    if (diaSem === 3) { res.in = "07:30"; res.out = "17:30"; res.refri = 1; }
+                    else if (diaSem === 6) { res.in = "07:30"; res.out = "12:30"; res.refri = 0; }
+                    else { res.in = "07:30"; res.out = "17:00"; res.refri = 1; }
+                } else {
+                    if (diaSem === 6) { res.in = "08:00"; res.out = "13:30"; res.refri = 0; }
+                    else { res.in = "08:00"; res.out = "17:30"; res.refri = 1; }
+                }
+            }
+            return res;
+        }
+
+        function sync() {
+            localStorage.setItem('mp_v99_personal', JSON.stringify(personal));
+            localStorage.setItem('mp_v99_historial', JSON.stringify(historial));
+            const msg = document.getElementById('save-msg'); msg.style.display = 'block'; setTimeout(() => msg.style.display = 'none', 2000);
+        }
+
+        function showSection(s) {
+            document.querySelectorAll('main > section').forEach(x => x.classList.add('hidden'));
+            document.getElementById('section-'+s).classList.remove('hidden');
+            document.querySelectorAll('.sidebar-item').forEach(x => x.classList.remove('sidebar-active'));
+            document.getElementById('btn-'+s).classList.add('sidebar-active');
+            if(s==='personal') renderPersonal();
+            if(s==='asistencia') renderAsistencia();
+            if(s==='historial') renderHistorial();
+        }
+
+        function renderPersonal() {
+            const list = document.getElementById('lista-personal');
+            const term = document.getElementById('search-personal').value.toLowerCase();
+            const filt = personal.filter(p => p.nombre.toLowerCase().includes(term) || p.dni.toLowerCase().includes(term));
+            list.innerHTML = filt.map((p, i) => `
+                <div class="glass-card p-6">
+                    <h4 class="font-bold text-lg text-slate-800">${p.nombre}</h4>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${p.dni} • ${p.sede} • ${p.tipo}</p>
+                    <div class="mt-6 flex gap-2">
+                        <button onclick="editPersonal(${personal.indexOf(p)})" class="bg-blue-50 text-blue-600 p-2 rounded-xl flex-1 text-xs font-bold">EDITAR</button>
+                        <button onclick="deletePersonal(${personal.indexOf(p)})" class="bg-rose-50 text-rose-600 p-2 rounded-xl px-4"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>`).join('');
+        }
+
+        function openModal() { editIdx = -1; document.getElementById('modal-personal').classList.remove('hidden'); }
+        function closeModal() { document.getElementById('modal-personal').classList.add('hidden'); }
+        
+        function guardarPersonal() {
+            const n = document.getElementById('f-nombre').value.toUpperCase(), d = document.getElementById('f-dni').value;
+            if(!n || !d) return;
+            const data = { nombre: n, dni: d, sede: document.getElementById('f-sede').value, tipo: document.getElementById('f-tipo').value };
+            if(editIdx === -1) { data.registroAsis = []; personal.push(data); } 
+            else personal[editIdx] = {...personal[editIdx], ...data};
+            sync(); closeModal(); renderPersonal();
+        }
+
+        function editPersonal(i) { 
+            editIdx = i; const p = personal[i]; 
+            document.getElementById('f-nombre').value = p.nombre; 
+            document.getElementById('f-dni').value = p.dni; 
+            document.getElementById('f-sede').value = p.sede;
+            document.getElementById('f-tipo').value = p.tipo;
+            document.getElementById('modal-personal').classList.remove('hidden'); 
+        }
+
+        function deletePersonal(i) { if(confirm("¿Seguro de eliminar este trabajador?")) { personal.splice(i,1); sync(); renderPersonal(); } }
+
+        function renderAsistencia() {
+            document.getElementById('mes-actual-label').innerText = `${MESES[mAct]} ${aAct}`;
+            const cont = document.getElementById('grupos-asistencia'); cont.innerHTML = '';
+            document.getElementById('count-personal').innerText = `${personal.length} Trabajadores`;
+
+            ["Moche", "Piura", "Cajamarca"].forEach(s => {
+                const filt = personal.filter(p => p.sede === s); if(!filt.length) return;
+                cont.innerHTML += `
+                    <div class="glass-card overflow-hidden">
+                        <div class="p-6 bg-slate-900 text-white flex justify-between items-center">
+                            <h3 class="font-bold tracking-widest">${s.toUpperCase()}</h3>
+                            <span class="text-[10px] bg-white/20 px-3 py-1 rounded-full">${filt.length} Personal</span>
+                        </div>
+                        <table class="w-full">
+                            <thead><tr><th class="text-left px-6">Nombre</th><th class="text-center">Deuda Acumulada</th><th class="text-right px-6">Acción</th></tr></thead>
+                            <tbody class="divide-y">${filt.map(p => `<tr>
+                                <td class="px-6 py-4 font-bold text-slate-700">${p.nombre}</td>
+                                <td class="text-center font-black text-orange-600">${calcularResumen(p).debe}h</td>
+                                <td class="px-6 py-4 text-right"><button onclick="openAsistenciaModal(${personal.indexOf(p)})" class="bg-blue-600 text-white px-6 py-2 rounded-xl text-[10px] font-black tracking-widest hover:bg-blue-700 transition-all">ABRIR PLANILLA</button></td>
+                            </tr>`).join('')}</tbody>
+                        </table>
+                    </div>`;
+            });
+        }
+
+        function openAsistenciaModal(idx) {
+            currentIdx = idx; const p = personal[idx];
+            document.getElementById('at-nombre-tit').innerText = p.nombre + " — " + p.tipo.toUpperCase();
+            const body = document.getElementById('asistencia-mes-body'); body.innerHTML = '';
+            const diasMes = new Date(aAct, mAct+1, 0).getDate();
+            for(let d=1; d<=diasMes; d++){
+                const fe = new Date(aAct, mAct, d); const diaSem = fe.getDay();
+                const teorico = getHorarioTeorico(p.sede, p.tipo, diaSem);
+                const r = (p.registroAsis && p.registroAsis[d-1]) || { 
+                    status: (diaSem===0?'fer':'lab'), 
+                    in: teorico.in !== "00:00" ? teorico.in : "", 
+                    out: teorico.out !== "00:00" ? teorico.out : "", 
+                    refri: teorico.refri, perm: 0, h25: 0, h35: 0, h100: 0, debe: 0 
+                };
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td class="p-3 text-[11px] font-black border-b ${diaSem===0?'text-rose-500 bg-rose-50/50':'text-slate-500'}">${d} ${DIAS[diaSem]}</td>
+                    <td class="border-b"><select class="text-[10px] font-bold status-sel w-20 border rounded-lg p-1" onchange="calcFila(this)"><option value="lab" ${r.status==='lab'?'selected':''}>LAB</option><option value="fal" ${r.status==='fal'?'selected':''}>FALTA</option><option value="vac" ${r.status==='vac'?'selected':''}>VAC</option><option value="dm" ${r.status==='dm'?'selected':''}>DM</option><option value="fer" ${r.status==='fer'?'selected':''}>FER/DOM</option></select></td>
+                    <td class="border-b"><input type="time" class="text-[11px] t-in w-full border-none" value="${r.in}" onchange="calcFila(this)"></td>
+                    <td class="border-b"><input type="time" class="text-[11px] t-out w-full border-none" value="${r.out}" onchange="calcFila(this)"></td>
+                    <td class="border-b"><input type="number" step="0.5" class="text-[11px] t-ref w-12 border rounded p-1" value="${r.refri}" onchange="calcFila(this)"></td>
+                    <td class="border-b"><input type="number" step="0.5" class="text-[11px] t-perm w-12 border rounded p-1" value="${r.perm}" onchange="calcFila(this)"></td>
+                    <td class="h25 border-b text-[11px] font-bold text-blue-600">${r.h25 || 0}</td>
+                    <td class="h35 border-b text-[11px] font-bold text-indigo-600">${r.h35 || 0}</td>
+                    <td class="h100 border-b text-[11px] font-bold text-emerald-600">${r.h100 || 0}</td>
+                    <td class="h-debe border-b text-[11px] font-bold text-orange-600">${r.debe || 0}</td>`;
+                body.appendChild(tr);
+            }
+            document.getElementById('modal-asistencia').classList.remove('hidden');
+        }
+
+        function calcFila(el) {
+            const tr = el.closest('tr');
+            const dStr = tr.querySelector('td').innerText.split(' ')[0];
+            const diaSem = new Date(aAct, mAct, parseInt(dStr)).getDay();
+            const p = personal[currentIdx];
+            const teorico = getHorarioTeorico(p.sede, p.tipo, diaSem);
+            const st = tr.querySelector('.status-sel').value;
+            const tIn = tr.querySelector('.t-in').value, tOut = tr.querySelector('.t-out').value;
+            const ref = parseFloat(tr.querySelector('.t-ref').value) || 0, perm = parseFloat(tr.querySelector('.t-perm').value) || 0;
+            if(st !== 'lab' && st !== 'fer') { tr.querySelectorAll('.h25, .h35, .h100, .h-debe').forEach(x => x.innerText = "0"); return; }
+            let h25=0, h35=0, h100=0, de=0;
+            if(tIn && tOut && tIn !== "00:00" && tOut !== "00:00") {
+                let mEf = dMins(tIn, tOut) - (ref * 60);
+                if(st === 'fer') h100 = (mEf / 60).toFixed(1);
+                else {
+                    let jEsp = dMins(teorico.in, teorico.out) - (teorico.refri * 60);
+                    let balance = (mEf + (perm * 60)) - jEsp;
+                    if(balance > 0) { h25 = Math.min(2, balance/60).toFixed(1); h35 = Math.max(0, (balance/60) - 2).toFixed(1); } 
+                    else de = Math.abs(balance/60).toFixed(1);
+                }
+            }
+            tr.querySelector('.h25').innerText = h25; tr.querySelector('.h35').innerText = h35; tr.querySelector('.h100').innerText = h100; tr.querySelector('.h-debe').innerText = de;
+        }
+
+        function dMins(i, f) { if(!i || !f || i==="00:00") return 0; const [h1, m1] = i.split(':').map(Number), [h2, m2] = f.split(':').map(Number); return (h2*60+m2) - (h1*60+m1); }
+
+        function guardarAsistenciaMes() {
+            personal[currentIdx].registroAsis = Array.from(document.querySelectorAll('#asistencia-mes-body tr')).map(r => ({
+                status: r.querySelector('.status-sel').value, in: r.querySelector('.t-in').value, out: r.querySelector('.t-out').value,
+                refri: parseFloat(r.querySelector('.t-ref').value) || 0, perm: parseFloat(r.querySelector('.t-perm').value) || 0,
+                h25: parseFloat(r.querySelector('.h25').innerText) || 0, h35: parseFloat(r.querySelector('.h35').innerText) || 0, 
+                h100: parseFloat(r.querySelector('.h100').innerText) || 0, debe: parseFloat(r.querySelector('.h-debe').innerText) || 0
+            })); 
+            sync(); document.getElementById('modal-asistencia').classList.add('hidden'); renderAsistencia();
+        }
+
+        function calcularResumen(p) {
+            let d = 0; if(p.registroAsis) p.registroAsis.forEach(x => d += (x.debe || 0));
+            return { debe: d.toFixed(1) };
+        }
+
+        function cerrarMes() {
+            if(!confirm("¿Cerrar mes y guardar en historial?")) return;
+            historial.unshift({ id: Date.now(), mes: MESES[mAct], anio: aAct, timestamp: new Date().toLocaleString(), data: JSON.parse(JSON.stringify(personal)) });
+            sync(); alert("Mes cerrado."); showSection('historial');
+        }
+
+        function renderHistorial() {
+            const list = document.getElementById('lista-historial');
+            const term = document.getElementById('search-historial').value.toLowerCase();
+            const filt = historial.filter(h => {
+                const searchStr = (h.mes + " " + h.anio).toLowerCase();
+                const hasWorker = h.data.some(p => p.nombre.toLowerCase().includes(term) || p.dni.toLowerCase().includes(term));
+                return searchStr.includes(term) || hasWorker;
+            });
+
+            if(!filt.length) { list.innerHTML = '<p class="text-slate-400 italic">No se encontraron resultados.</p>'; return; }
+            list.innerHTML = filt.map(h => `
+                <div class="glass-card p-6 flex justify-between items-center">
+                    <div>
+                        <h4 class="font-black text-slate-800 text-lg">${h.mes} ${h.anio}</h4>
+                        <p class="text-[10px] text-slate-400 font-bold">CERRADO: ${h.timestamp}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="descargarHistorico(${h.id})" class="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl text-xs font-bold"><i class="fas fa-file-excel mr-2"></i>EXCEL</button>
+                        <button onclick="eliminarHistorico(${h.id})" class="text-rose-400 hover:text-rose-600 px-2"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>`).join('');
+        }
+
+        function eliminarHistorico(id) { if(confirm("¿Eliminar?")) { historial = historial.filter(x => x.id !== id); sync(); renderHistorial(); } }
+        function descargarHistorico(id) { const item = historial.find(x => x.id === id); if(item) exportToExcel(item.data, item.mes, item.anio); }
+
+        function exportToExcel(customData = null, customMes = null, customAnio = null) {
+            const targetData = customData || personal;
+            const mLabel = customMes || MESES[mAct], aLabel = customAnio || aAct;
+            const wb = XLSX.utils.book_new();
+            const diasMes = new Date(aLabel, customMes ? MESES.indexOf(customMes) + 1 : mAct + 1, 0).getDate();
+
+            // Resumen con Total Días Laborados
+            let dataG = [["RESUMEN - " + mLabel + " " + aLabel], ["SEDE", "NOMBRE", "DNI", "DÍAS LAB.", "DEUDA(H)", "25%", "35%", "100%"]];
+            targetData.forEach(p => {
+                let d=0, h25=0, h35=0, h100=0, diasLab=0;
+                if(p.registroAsis) p.registroAsis.forEach(r => { 
+                    d+=(r.debe||0); h25+=(r.h25||0); h35+=(r.h35||0); h100+=(r.h100||0);
+                    if(r.status === 'lab') diasLab++;
+                });
+                dataG.push([p.sede, p.nombre, p.dni, diasLab, d.toFixed(1), h25.toFixed(1), h35.toFixed(1), h100.toFixed(1)]);
+            });
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dataG), "Resumen");
+
+            // Sedes Detalle
+            ["Moche", "Piura", "Cajamarca"].forEach(sede => {
+                const filt = targetData.filter(p => p.sede === sede); if(!filt.length) return;
+                let head = ["NOMBRE", "DNI"]; for(let i=1; i<=31; i++) head.push(i.toString());
+                head.push("TOTAL DEUDA", "TOTAL EXTRA");
+                let dataS = [["DETALLE " + sede.toUpperCase() + " (" + mLabel + ")"], head];
+                filt.forEach(p => {
+                    let row = [p.nombre, p.dni], td=0, te=0;
+                    for(let i=1; i<=31; i++) {
+                        if(i > diasMes) { row.push(""); continue; }
+                        const r = p.registroAsis ? p.registroAsis[i-1] : null;
+                        if(!r) { row.push("-"); continue; }
+                        const char = (r.status==='lab'?'L':(r.status==='fal'?'F':(r.status==='vac'?'V':(r.status==='dm'?'M':'D'))));
+                        let extraDia = (r.h25||0) + (r.h35||0) + (r.h100||0);
+                        let debeDia = (r.debe||0);
+                        if(extraDia > 0) row.push(`${char} (${extraDia.toFixed(1)})`);
+                        else if(debeDia > 0) row.push(`${char} (-${debeDia.toFixed(1)})`);
+                        else row.push(char);
+                        td += debeDia; te += extraDia;
+                    }
+                    row.push(td.toFixed(1), te.toFixed(1)); dataS.push(row);
+                });
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dataS), sede);
+            });
+            XLSX.writeFile(wb, `Planilla_${mLabel}_${aLabel}.xlsx`);
+        }
+
+        function closeAsistenciaModal() { document.getElementById('modal-asistencia').classList.add('hidden'); }
+        
+        function copiarPrimerHorario() {
+             const rows = document.querySelectorAll('#asistencia-mes-body tr');
+             rows.forEach(row => {
+                 const dStr = row.querySelector('td').innerText.split(' ')[0];
+                 const diaSem = new Date(aAct, mAct, parseInt(dStr)).getDay();
+                 const p = personal[currentIdx], t = getHorarioTeorico(p.sede, p.tipo, diaSem);
+                 if(row.querySelector('.status-sel').value === 'lab' && diaSem !== 0) {
+                     row.querySelector('.t-in').value = t.in; row.querySelector('.t-out').value = t.out; row.querySelector('.t-ref').value = t.refri;
+                     calcFila(row.querySelector('.t-in'));
+                 }
+             });
+        }
+        window.onload = () => { renderPersonal(); renderAsistencia(); renderHistorial(); };
+    </script>
+</body>
+</html>
