@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maderas Prosperidad - Gestión de Planillas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .glass-card { background: white; border-radius: 1.5rem; border: 1px solid #f1f5f9; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.01); transition: all 0.3s ease; }
+        .glass-card:hover { transform: translateY(-3px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); }
+        .input-field { border: 1px solid #e2e8f0; padding: 0.6rem 1rem; border-radius: 1rem; width: 100%; outline: none; font-size: 0.875rem; transition: all 0.2s; }
+        .input-field:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+        .sidebar-item { cursor: pointer; color: #64748b; font-size: 0.875rem; font-weight: 600; padding: 0.85rem 1.25rem; border-radius: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.75rem; transition: all 0.2s; }
+        .sidebar-item:hover { background: #f1f5f9; color: #1e293b; }
+        .sidebar-active { background: #2563eb; color: white !important; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.2); }
+        .status-pill { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
+        .save-indicator { position: fixed; bottom: 2rem; right: 2rem; padding: 1rem 2rem; background: #0f172a; color: white; border-radius: 1.25rem; font-size: 0.85rem; display: none; z-index: 100; font-weight: 600; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+        table th { text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.05em; color: #94a3b8; font-weight: 800; padding: 1rem; }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden">
+
+    <div id="save-msg" class="save-indicator"><i class="fas fa-check-circle text-emerald-400 mr-2"></i> Cambios Guardados</div>
+
+    <!-- Navegación Lateral -->
+    <aside class="w-80 bg-white border-r flex flex-col p-8 z-20">
+        <div class="mb-12">
+            <div class="flex items-center gap-3 mb-2">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                    <i class="fas fa-tree text-lg"></i>
+                </div>
+                <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">Prosperidad</h1>
+            </div>
+            <p class="text-[10px] text-slate-400 font-bold tracking-[0.2em] uppercase">Panel Administrativo v9.9</p>
+        </div>
+        
+        <nav class="flex-1">
+            <div onclick="showSection('personal')" id="btn-personal" class="sidebar-item sidebar-active">
+                <i class="fas fa-users"></i> Colaboradores
+            </div>
+            <div onclick="showSection('asistencia')" id="btn-asistencia" class="sidebar-item">
+                <i class="fas fa-calendar-check"></i> Planilla Actual
+            </div>
+            <div onclick="showSection('historial')" id="btn-historial" class="sidebar-item">
+                <i class="fas fa-database"></i> Base de Datos
+            </div>
+            <div onclick="showSection('config')" id="btn-config" class="sidebar-item mt-10 border-t pt-10">
+                <i class="fas fa-sliders-h"></i> Configuración
+            </div>
+        </nav>
+        
+        <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+            <p class="text-[10px] font-black text-slate-400 uppercase mb-2">GxDeveloperFast</p>
+            <p class="text-xs font-semibold text-slate-700">SISTEMA DE ASISTENCIA GX</p>
+        </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto bg-[#f8fafc] relative">
+        
+        <!-- SECCIÓN COLABORADORES -->
+        <section id="section-personal" class="p-10 space-y-8 max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-3xl font-extrabold text-slate-900">Personal</h2>
+                    <p class="text-slate-500 font-medium">Gestiona los perfiles y deudas de los trabajadores.</p>
+                </div>
+                <div class="flex gap-3 w-full md:w-auto">
+                    <div class="relative flex-1 md:w-64">
+                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="search-personal" oninput="renderPersonal()" class="input-field pl-11" placeholder="Buscar por DNI o Nombre...">
+                    </div>
+                    <button onclick="openModal()" class="bg-blue-600 text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-xl shadow-blue-200 hover:bg-blue-700 flex items-center gap-2 whitespace-nowrap">
+                        <i class="fas fa-plus"></i> NUEVO
+                    </button>
+                </div>
+            </div>
+            <div id="lista-personal" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </section>
+
+        <!-- SECCIÓN ASISTENCIA -->
+        <section id="section-asistencia" class="hidden p-10 space-y-8 max-w-7xl mx-auto">
+            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
+                <div class="flex items-center gap-6">
+                    <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 text-2xl">
+                        <i class="fas fa-calendar-day"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-extrabold text-slate-900" id="mes-actual-label">--</h2>
+                        <div class="flex gap-2 mt-1">
+                            <span class="status-pill bg-emerald-100 text-emerald-600" id="count-personal">0 Trabajadores</span>
+                            <span class="status-pill bg-blue-100 text-blue-600">Periodo Abierto</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="cerrarMes()" class="bg-slate-900 text-white px-6 py-3 rounded-2xl text-xs font-bold hover:bg-black transition-all">CERRAR MES</button>
+                    <button onclick="exportToExcel()" class="bg-emerald-500 text-white px-6 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-emerald-200 hover:bg-emerald-600">
+                        <i class="fas fa-file-excel"></i> DESCARGAR EXCEL COMPLETO
+                    </button>
+                </div>
+            </div>
+
+            <div id="grupos-asistencia" class="space-y-8"></div>
+        </section>
+
+        <!-- SECCIÓN BASE DE DATOS (Filtro Tiempo Real) -->
+        <section id="section-historial" class="hidden p-10 space-y-8 max-w-5xl mx-auto">
+            <div class="text-center space-y-2">
+                <h2 class="text-3xl font-extrabold text-slate-900">Base de Datos Histórica</h2>
+                <p class="text-slate-500">Consulta los registros de meses finalizados.</p>
+            </div>
+            
+            <div class="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-1 block">Mes</label>
+                    <select id="h-mes" onchange="consultarHistorial()" class="input-field"></select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-1 block">Año</label>
+                    <select id="h-anio" onchange="consultarHistorial()" class="input-field"></select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-1 block">Filtrar por DNI o Nombre</label>
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="h-dni" oninput="consultarHistorial()" class="input-field pl-11" placeholder="Ej: 7245...">
+                    </div>
+                </div>
+            </div>
+            
+            <div id="resumen-historial" class="min-h-[200px]"></div>
+        </section>
+
+        <!-- SECCIÓN CONFIGURACIÓN -->
+        <section id="section-config" class="hidden p-10 space-y-8 max-w-4xl mx-auto">
+            <div class="flex items-center gap-4">
+                <i class="fas fa-clock text-blue-600 text-2xl"></i>
+                <h2 class="text-2xl font-extrabold text-slate-900">Horarios por Sede</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8" id="config-grid"></div>
+        </section>
+    </main>
+
+    <!-- MODALES (Omitidos los cambios de modal para brevedad, son iguales a v9.8) -->
+    <!-- MODAL PERSONAL -->
+    <div id="modal-personal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 hidden p-6">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl p-10 space-y-6">
+            <h3 class="text-2xl font-extrabold text-slate-900">Ficha del Colaborador</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-2 mb-1 block">Nombre Completo</label>
+                    <input type="text" id="f-nombre" class="input-field" placeholder="Ej. Juan Pérez">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-2 mb-1 block">DNI / Documento</label>
+                    <input type="text" id="f-dni" class="input-field">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-2 mb-1 block">Sede</label>
+                        <select id="f-sede" class="input-field">
+                            <option value="Moche">Moche</option>
+                            <option value="Piura">Piura</option>
+                            <option value="Cajamarca">Cajamarca</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-2 mb-1 block">Tipo</label>
+                        <select id="f-tipo" class="input-field"><option value="Operativo">Operativo</option><option value="Administrativo">Administrativo</option></select>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-4 pt-4">
+                <button onclick="closeModal()" class="flex-1 py-4 text-xs font-bold text-slate-400 hover:text-slate-600">CANCELAR</button>
+                <button onclick="guardarPersonal()" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-xs font-bold shadow-xl shadow-blue-200">GUARDAR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL MARCACIONES -->
+    <div id="modal-asistencia" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-7xl h-[92vh] shadow-2xl flex flex-col overflow-hidden">
+            <div class="p-8 border-b bg-white flex justify-between items-center">
+                <div class="flex items-center gap-5">
+                    <div class="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-700 text-xl font-bold" id="at-inicial">?</div>
+                    <div>
+                        <h3 class="text-2xl font-black text-slate-900 leading-none" id="at-nombre-tit">Nombre</h3>
+                        <div id="at-sub-info" class="flex gap-2 mt-2"></div>
+                    </div>
+                </div>
+                <button onclick="closeAsistenciaModal()" class="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-all"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-8 overflow-auto flex-1 bg-[#fcfdfe]">
+                <table class="w-full text-left border-separate border-spacing-y-2">
+                    <thead>
+                        <tr>
+                            <th class="w-24">Día</th>
+                            <th class="w-32">Estado</th>
+                            <th class="w-24 text-center">Entrada</th>
+                            <th class="w-24 text-center">Salida</th>
+                            <th class="w-20 text-center">Refr. (H)</th>
+                            <th class="w-20 text-center text-blue-600">Perm. (H)</th>
+                            <th class="text-center bg-blue-50/50">25%</th>
+                            <th class="text-center bg-blue-50/50">35%</th>
+                            <th class="text-center bg-blue-50/50">100%</th>
+                            <th class="text-center bg-orange-50/50 text-orange-600 font-black">Deuda (H)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="asistencia-mes-body"></tbody>
+                </table>
+            </div>
+            <div class="p-8 border-t bg-white flex flex-col md:flex-row justify-between items-center gap-4">
+                <button onclick="copiarPrimerHorario()" class="px-8 py-4 bg-slate-900 text-white text-[11px] font-bold rounded-2xl flex items-center gap-3 hover:scale-105 transition-all">
+                    <i class="fas fa-magic"></i> AUTO-COMPLETAR LUNES A VIERNES
+                </button>
+                <div class="flex gap-4">
+                    <button onclick="closeAsistenciaModal()" class="px-8 py-4 text-xs font-bold text-slate-400">CANCELAR</button>
+                    <button onclick="guardarAsistenciaMes()" class="px-12 py-4 bg-blue-600 text-white rounded-2xl text-xs font-bold shadow-xl shadow-blue-200">GUARDAR CAMBIOS</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let HORARIOS = JSON.parse(localStorage.getItem('mp_v98_horarios')) || {
+            Moche: { Administrativo: { entrada: "08:00", salida: "17:00", refri: 1 }, Operativo: { entrada: "07:30", salida: "17:00", refri: 1 } },
+            Piura: { Administrativo: { entrada: "08:00", salida: "17:00", refri: 1 }, Operativo: { entrada: "07:30", salida: "16:30", refri: 0.5 } },
+            Cajamarca: { Administrativo: { entrada: "08:00", salida: "17:00", refri: 1 }, Operativo: { entrada: "07:30", salida: "16:30", refri: 0.5 } }
+        };
+
+        let personal = JSON.parse(localStorage.getItem('mp_v98_personal')) || [];
+        let historial = JSON.parse(localStorage.getItem('mp_v98_historial')) || [];
+        
+        let currentIdx = -1;
+        let editIdx = -1;
+        const MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+        const DIAS = ["DOM", "LUN", "MAR", "MIE", "JUE", "VIE", "SAB"];
+        const dH = new Date();
+        const mAct = dH.getMonth();
+        const aAct = dH.getFullYear();
+
+        function sync() {
+            localStorage.setItem('mp_v98_personal', JSON.stringify(personal));
+            localStorage.setItem('mp_v98_horarios', JSON.stringify(HORARIOS));
+            localStorage.setItem('mp_v98_historial', JSON.stringify(historial));
+            const msg = document.getElementById('save-msg');
+            msg.style.display = 'block'; setTimeout(() => msg.style.display = 'none', 2000);
+        }
+
+        function showSection(s) {
+            document.querySelectorAll('main > section').forEach(x => x.classList.add('hidden'));
+            document.getElementById('section-'+s).classList.remove('hidden');
+            document.querySelectorAll('.sidebar-item').forEach(x => x.classList.remove('sidebar-active'));
+            document.getElementById('btn-'+s).classList.add('sidebar-active');
+            if(s==='personal') renderPersonal();
+            if(s==='asistencia') renderAsistencia();
+            if(s==='config') renderConfig();
+            if(s==='historial') setupHistorial();
+        }
+
+        function renderPersonal() {
+            const list = document.getElementById('lista-personal');
+            const term = document.getElementById('search-personal').value.toLowerCase();
+            const filtrados = personal.filter(p => p.nombre.toLowerCase().includes(term) || p.dni.toLowerCase().includes(term));
+            list.innerHTML = filtrados.map((p, i) => {
+                const res = calcularResumen(p); const originalIdx = personal.indexOf(p);
+                return `<div class="glass-card p-8">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center font-bold text-slate-500">${p.nombre.charAt(0)}</div>
+                        <div class="flex gap-2">
+                             <button onclick="editPersonal(${originalIdx})" class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 transition-all flex items-center justify-center"><i class="fas fa-pen text-xs"></i></button>
+                             <button onclick="deletePersonal(${originalIdx})" class="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 transition-all flex items-center justify-center"><i class="fas fa-trash text-xs"></i></button>
+                        </div>
+                    </div>
+                    <div><h4 class="font-extrabold text-slate-800 text-lg leading-tight">${p.nombre}</h4><p class="text-[10px] text-slate-400 font-black mt-1">ID: ${p.dni} • ${p.sede}</p></div>
+                    <div class="grid grid-cols-2 gap-3 mt-6">
+                        <div class="bg-slate-50 p-3 rounded-xl"><p class="text-[9px] font-black text-slate-400 uppercase">LAB</p><p class="text-xs font-bold text-slate-700">${res.lab}</p></div>
+                        <div class="bg-orange-50 p-3 rounded-xl"><p class="text-[9px] font-black text-orange-400 uppercase">Deuda</p><p class="text-xs font-black text-orange-600">${res.debe}h</p></div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function openModal() { editIdx = -1; document.getElementById('f-nombre').value=""; document.getElementById('f-dni').value=""; document.getElementById('modal-personal').classList.remove('hidden'); }
+        function closeModal() { document.getElementById('modal-personal').classList.add('hidden'); }
+        function editPersonal(i) { editIdx = i; const p = personal[i]; document.getElementById('f-nombre').value = p.nombre; document.getElementById('f-dni').value = p.dni; document.getElementById('f-sede').value = p.sede; document.getElementById('f-tipo').value = p.tipo; document.getElementById('modal-personal').classList.remove('hidden'); }
+        function guardarPersonal() { const n = document.getElementById('f-nombre').value, d = document.getElementById('f-dni').value; if(!n || !d) return; if(editIdx===-1) personal.push({ nombre: n, dni: d, sede: document.getElementById('f-sede').value, tipo: document.getElementById('f-tipo').value, registroAsis: [] }); else personal[editIdx] = { ...personal[editIdx], nombre: n, dni: d, sede: document.getElementById('f-sede').value, tipo: document.getElementById('f-tipo').value }; sync(); closeModal(); renderPersonal(); }
+        function deletePersonal(i) { if(confirm("¿Eliminar?")) { personal.splice(i,1); sync(); renderPersonal(); } }
+
+        function renderAsistencia() {
+            document.getElementById('mes-actual-label').innerText = `${MESES[mAct]} ${aAct}`;
+            document.getElementById('count-personal').innerText = `${personal.length} Trabajadores`;
+            const cont = document.getElementById('grupos-asistencia'); cont.innerHTML = '';
+            ["Moche", "Piura", "Cajamarca"].forEach(s => {
+                const filt = personal.filter(p => p.sede === s); if(!filt.length) return;
+                const card = document.createElement('div'); card.className = "glass-card overflow-hidden";
+                card.innerHTML = `<div class="px-10 py-6 bg-slate-900 flex justify-between items-center text-white"><div><h3 class="text-2xl font-black">${s.toUpperCase()}</h3></div></div>
+                <div class="overflow-x-auto"><table class="w-full"><thead class="bg-slate-50"><tr><th class="text-left px-10">Colaborador</th><th class="text-center">Resumen Horas Extra</th><th class="text-right px-10">Acciones</th></tr></thead>
+                    <tbody class="divide-y divide-slate-100">${filt.map(p => { const res = calcularResumen(p); const he = calcularTotalesHE(p); return `<tr>
+                        <td class="px-10 py-6"><div class="font-bold text-slate-800">${p.nombre}</div></td>
+                        <td class="text-center"><div class="inline-flex gap-2"><span class="status-pill bg-blue-50 text-blue-600">25%: ${he.h25}</span><span class="status-pill bg-indigo-50 text-indigo-600">35%: ${he.h35}</span><span class="status-pill bg-rose-50 text-rose-600">100%: ${he.h100}</span></div></td>
+                        <td class="px-10 py-6 text-right"><span class="text-xs font-black text-orange-500 mr-8">DEUDA: ${res.debe}h</span><button onclick="openAsistenciaModal(${personal.indexOf(p)})" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase">Editar Planilla</button></td>
+                    </tr>`; }).join('')}</tbody></table></div>`;
+                cont.appendChild(card);
+            });
+        }
+
+        function openAsistenciaModal(idx) {
+            currentIdx = idx; const p = personal[idx]; const conf = HORARIOS[p.sede][p.tipo];
+            document.getElementById('at-nombre-tit').innerText = p.nombre; document.getElementById('at-inicial').innerText = p.nombre.charAt(0);
+            document.getElementById('at-sub-info').innerHTML = `<span class="status-pill bg-blue-100 text-blue-700">${p.sede}</span>`;
+            const body = document.getElementById('asistencia-mes-body'); body.innerHTML = '';
+            const diasMes = new Date(aAct, mAct+1, 0).getDate();
+            for(let d=1; d<=diasMes; d++){
+                const fe = new Date(aAct, mAct, d); const diaSem = fe.getDay();
+                let defIn=conf.entrada, defOut=conf.salida, defRef=conf.refri;
+                if(diaSem===3) defOut = (p.sede==='Moche'?'17:30':'17:00'); else if(diaSem===6) { defOut=(p.sede==='Moche'?'13:00':'12:30'); defRef=0; } else if(diaSem===0) { defIn=""; defOut=""; defRef=0; }
+                const r = (p.registroAsis && p.registroAsis[d-1]) || { status: (diaSem===0?'fer':'lab'), in: defIn, out: defOut, refri: defRef, perm: 0 };
+                const tr = document.createElement('tr'); tr.className = "bg-white border border-slate-100 rounded-2xl";
+                tr.innerHTML = `<td class="p-4"><div class="text-xs font-black">${d} ${DIAS[diaSem]}</div></td>
+                    <td class="p-2"><select class="input-field status-sel font-bold text-[11px]" onchange="calcFila(this)"><option value="lab" ${r.status==='lab'?'selected':''}>LABORAL</option><option value="fal" ${r.status==='fal'?'selected':''}>FALTA</option><option value="vac" ${r.status==='vac'?'selected':''}>VACACIONES</option><option value="dm" ${r.status==='dm'?'selected':''}>D. MEDICO</option><option value="fer" ${r.status==='fer'?'selected':''}>FERIADO/DOM</option></select></td>
+                    <td class="p-2"><input type="time" class="input-field t-in" value="${r.in||''}" onchange="calcFila(this)"></td>
+                    <td class="p-2"><input type="time" class="input-field t-out" value="${r.out||''}" onchange="calcFila(this)"></td>
+                    <td class="p-2"><input type="number" step="0.5" class="input-field t-ref" value="${r.refri}" onchange="calcFila(this)"></td>
+                    <td class="p-2"><input type="number" step="0.5" class="input-field t-perm" value="${r.perm||0}" onchange="calcFila(this)"></td>
+                    <td class="p-2 text-center text-xs font-bold h25">-</td><td class="p-2 text-center text-xs font-bold h35">-</td><td class="p-2 text-center text-xs font-bold h100">-</td><td class="p-2 text-center text-xs font-black text-orange-600 h-debe">-</td>`;
+                body.appendChild(tr); calcFila(tr.querySelector('.status-sel'));
+            }
+            document.getElementById('modal-asistencia').classList.remove('hidden');
+        }
+
+        function calcFila(el) {
+            const tr = el.closest('tr'); const st = tr.querySelector('.status-sel').value;
+            const tIn = tr.querySelector('.t-in').value, tOut = tr.querySelector('.t-out').value;
+            const ref = parseFloat(tr.querySelector('.t-ref').value) || 0, perm = parseFloat(tr.querySelector('.t-perm').value) || 0;
+            const p = personal[currentIdx], conf = HORARIOS[p.sede][p.tipo];
+            if(st !== 'lab' && st !== 'fer') { tr.querySelectorAll('.h25, .h35, .h100, .h-debe').forEach(x => x.innerText = "0.0"); return; }
+            const dTxt = tr.querySelector('td div').innerText; const esSab = dTxt.includes("SAB"), esMie = dTxt.includes("MIE");
+            let jEsp;
+            if(esSab) jEsp = dMins(conf.entrada, (p.sede==="Moche"?"13:00":"12:30")); else if(esMie) jEsp = dMins(conf.entrada, (p.sede==="Moche"?"17:30":"17:00")) - (conf.refri*60); else jEsp = dMins(conf.entrada, conf.salida) - (conf.refri*60);
+            let h25=0, h35=0, h100=0, de=0;
+            if(tIn && tOut) {
+                let mEf = dMins(tIn, tOut) - (ref * 60);
+                if(st === 'fer') { h100 = (mEf / 60).toFixed(1); } else {
+                    let balance = (mEf + (perm * 60)) - jEsp;
+                    if(balance > 3) { h25 = Math.min(2, balance/60).toFixed(1); h35 = Math.max(0, (balance/60) - 2).toFixed(1); } else if(balance < -3) { de = Math.abs(balance/60).toFixed(1); }
+                }
+            } else if(st === 'lab') { de = (Math.max(0, jEsp - (perm * 60)) / 60).toFixed(1); }
+            tr.querySelector('.h25').innerText = h25; tr.querySelector('.h35').innerText = h35; tr.querySelector('.h100').innerText = h100; tr.querySelector('.h-debe').innerText = de || 0;
+        }
+
+        function dMins(i, f) { if(!i || !f) return 0; const [h1, m1] = i.split(':').map(Number), [h2, m2] = f.split(':').map(Number); let d = (h2*60+m2) - (h1*60+m1); return d < 0 ? d + 1440 : d; }
+
+        function guardarAsistenciaMes() {
+            personal[currentIdx].registroAsis = Array.from(document.querySelectorAll('#asistencia-mes-body tr')).map(r => ({
+                status: r.querySelector('.status-sel').value, in: r.querySelector('.t-in').value, out: r.querySelector('.t-out').value,
+                refri: parseFloat(r.querySelector('.t-ref').value), perm: parseFloat(r.querySelector('.t-perm').value),
+                h25: parseFloat(r.querySelector('.h25').innerText), h35: parseFloat(r.querySelector('.h35').innerText), h100: parseFloat(r.querySelector('.h100').innerText), debe: parseFloat(r.querySelector('.h-debe').innerText)
+            })); sync(); closeAsistenciaModal(); renderAsistencia();
+        }
+
+        function closeAsistenciaModal() { document.getElementById('modal-asistencia').classList.add('hidden'); }
+
+        function exportToExcel() {
+            const wb = XLSX.utils.book_new(); const diasMes = new Date(aAct, mAct+1, 0).getDate();
+            let resGeneral = [["INFORME - "+MESES[mAct]], ["SEDE", "COLABORADOR", "DNI", "D. LAB", "FAL", "VAC", "DM", "DEUDA", "25%", "35%", "100%"]];
+            personal.forEach(p => { const r = calcularResumen(p); const he = calcularTotalesHE(p); resGeneral.push([p.sede, p.nombre, p.dni, r.lab, r.fal, r.vac, r.dm, r.debe, he.h25, he.h35, he.h100]); });
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resGeneral), "Resumen");
+            ["Moche", "Piura", "Cajamarca"].forEach(s => {
+                const filt = personal.filter(p => p.sede === s); if(!filt.length) return;
+                let headers = ["COLABORADOR", "DNI", "LABORADOS", "DEUDA"];
+                for(let i=1; i<=diasMes; i++) headers.push(`D${i}`, `Exc.`, `25%`, `35%`, `100%`, `Deu.`);
+                headers.push("T-25%", "T-35%", "T-100%");
+                let data = [headers];
+                filt.forEach(p => {
+                    const res = calcularResumen(p); const totHe = calcularTotalesHE(p);
+                    let row = [p.nombre, p.dni, res.lab, res.debe];
+                    for(let i=0; i<diasMes; i++) {
+                        const fe = new Date(aAct, mAct, i+1); const diaSem = fe.getDay();
+                        let d = (p.registroAsis && p.registroAsis[i]);
+                        if(!d) row.push((diaSem===0?"FER":"LAB"), "", "", "", "", "");
+                        else row.push(d.status.toUpperCase(), d.perm > 0 ? `P:${d.perm}` : "", d.h25 || "", d.h35 || "", d.h100 || "", d.debe || "");
+                    }
+                    row.push(totHe.h25, totHe.h35, totHe.h100); data.push(row);
+                });
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), s.substring(0,10));
+            });
+            XLSX.writeFile(wb, `Planilla_${MESES[mAct]}.xlsx`);
+        }
+
+        function calcularResumen(p) {
+            let r = { lab:0, fal:0, vac:0, dm:0, debe:0 };
+            const diasMes = new Date(aAct, mAct+1, 0).getDate();
+            for(let i=0; i<diasMes; i++) {
+                const fe = new Date(aAct, mAct, i+1); const diaSem = fe.getDay();
+                let x = (p.registroAsis && p.registroAsis[i]);
+                if(!x) { if(diaSem !== 0) r.lab++; } 
+                else { if(x.status==='lab') r.lab++; else if(x.status==='fal') r.fal++; else if(x.status==='vac') r.vac++; else if(x.status==='dm') r.dm++; r.debe += (x.debe || 0); }
+            }
+            return { ...r, debe: r.debe.toFixed(1) };
+        }
+
+        function calcularTotalesHE(p) {
+            let h = { h25:0, h35:0, h100:0 };
+            if(p.registroAsis) p.registroAsis.forEach(x => { h.h25 += (x.h25 || 0); h.h35 += (x.h35 || 0); h.h100 += (x.h100 || 0); });
+            return { h25: h.h25.toFixed(1), h35: h.h35.toFixed(1), h100: h.h100.toFixed(1) };
+        }
+
+        function renderConfig() {
+            const g = document.getElementById('config-grid'); g.innerHTML = '';
+            for(let s in HORARIOS) {
+                for(let t in HORARIOS[s]) {
+                    const c = HORARIOS[s][t];
+                    const d = document.createElement('div'); d.className = "bg-white p-8 rounded-[2rem] border";
+                    d.innerHTML = `<div class="mb-4 font-black uppercase text-xs">${s} - ${t}</div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><input type="time" class="input-field" value="${c.entrada}" onchange="HORARIOS['${s}']['${t}'].entrada=this.value;sync()"></div>
+                            <div><input type="time" class="input-field" value="${c.salida}" onchange="HORARIOS['${s}']['${t}'].salida=this.value;sync()"></div>
+                        </div>`;
+                    g.appendChild(d);
+                }
+            }
+        }
+
+        function setupHistorial() {
+            document.getElementById('h-mes').innerHTML = MESES.map((m, i) => `<option value="${i}" ${i===mAct?'selected':''}>${m}</option>`).join('');
+            document.getElementById('h-anio').innerHTML = [2024, 2025, 2026].map(a => `<option value="${a}" ${a===aAct?'selected':''}>${a}</option>`).join('');
+            consultarHistorial();
+        }
+
+        // --- FILTRO HISTORIAL TIEMPO REAL ---
+        function consultarHistorial() {
+            const m = parseInt(document.getElementById('h-mes').value), a = parseInt(document.getElementById('h-anio').value);
+            const query = document.getElementById('h-dni').value.toLowerCase();
+            const found = historial.find(x => x.mes === m && x.anio === a);
+            const res = document.getElementById('resumen-historial');
+            
+            if(!found) { 
+                res.innerHTML = `<div class="bg-white p-20 text-center text-slate-400 font-bold border rounded-[2rem]">No se encontraron registros para este periodo.</div>`; 
+                return; 
+            }
+
+            const filtrados = found.data.filter(p => p.nombre.toLowerCase().includes(query) || p.dni.toLowerCase().includes(query));
+            
+            if(!filtrados.length) {
+                res.innerHTML = `<div class="bg-white p-20 text-center text-slate-400 font-bold border rounded-[2rem]">No hay coincidencias con "${query}".</div>`;
+                return;
+            }
+
+            res.innerHTML = `<div class="glass-card overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-slate-50"><tr><th class="text-left px-8">Nombre</th><th class="px-8">DNI</th><th class="text-right px-8">Deuda</th></tr></thead>
+                    <tbody class="divide-y">${filtrados.map(p => `<tr>
+                        <td class="px-8 py-4 font-bold text-slate-700">${p.nombre}</td>
+                        <td class="px-8 py-4 text-center text-slate-400 font-mono text-xs">${p.dni}</td>
+                        <td class="px-8 py-4 text-right text-orange-600 font-black">${calcularResumen(p).debe}h</td>
+                    </tr>`).join('')}</tbody>
+                </table>
+            </div>`;
+        }
+
+        function cerrarMes() {
+            historial = historial.filter(h => !(h.mes === mAct && h.anio === aAct));
+            historial.push({ id: Date.now(), mes: mAct, anio: aAct, data: JSON.parse(JSON.stringify(personal)) });
+            sync(); alert("Mes Guardado en Base de Datos."); showSection('historial');
+        }
+
+        function copiarPrimerHorario() {
+            const rows = document.querySelectorAll('#asistencia-mes-body tr'); if(!rows.length) return;
+            const r1 = rows[0], i = r1.querySelector('.t-in').value, o = r1.querySelector('.t-out').value, r = r1.querySelector('.t-ref').value;
+            rows.forEach(row => {
+                const txt = row.querySelector('td div').innerText;
+                if(row.querySelector('.status-sel').value==='lab' && !txt.includes("SAB") && !txt.includes("MIE") && !txt.includes("DOM")) {
+                    row.querySelector('.t-in').value = i; row.querySelector('.t-out').value = o; row.querySelector('.t-ref').value = r;
+                    calcFila(row.querySelector('.t-in'));
+                }
+            });
+        }
+
+        window.onload = () => { renderPersonal(); renderAsistencia(); renderConfig(); };
+    </script>
+</body>
+</html>
